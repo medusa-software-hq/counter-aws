@@ -22,7 +22,7 @@ resource "github_repository" "counter_releases" {
   has_wiki     = false
 
   # If the repo was created first, it has to be imported:
-  # terraform import github_repository.counter_releases counter-releases
+  # terraform import github_repository.counter_releases counter-aws-releases
 }
 
 moved {

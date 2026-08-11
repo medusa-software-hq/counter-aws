@@ -40,7 +40,7 @@ locals {
   # NOT part of environment_config. Used for the `github` provider owner and
   # Terraform state prefixes.
   gh_organization_name   = "medusa-software-hq"
-  gh_repo_name           = "counter" # 🎨 TEMPLATE EJECT: Change the repo name
+  gh_repo_name           = "counter-aws"
   gh_api_url_var_name    = "API_URL"
   gh_default_branch_name = "trunk/aws" # 🎨 TEMPLATE EJECT: Change the default branch
 
@@ -48,7 +48,7 @@ locals {
   # infra), and the GitHub App the Publish CLI workflow authenticates as to push
   # releases + the Homebrew formula. Flavor constants — one app, one releases
   # repo, shared across environments.
-  gh_releases_repo_name = "counter-releases"
+  gh_releases_repo_name = "counter-aws-releases"
   # 🎨 TEMPLATE POST-EJECT: Create a GitHub App and change its client id here 👇
   gh_releases_client_id = "Iv23ct4SGbvxYw9pxJs8" # "Medusa Counter Releaser"
 
