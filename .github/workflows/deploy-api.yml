@@ -52,7 +52,9 @@ jobs:
         # Extract the adapter binary from the official image into jib's extra
         # directory, so the built image carries it at /opt/extensions/.
         run: |
-          docker create --name lwa "$LWA_IMAGE"
+          # The adapter image is FROM scratch (no CMD), so `docker create` needs
+          # a command arg — it is never run, just enough to `docker cp` out of.
+          docker create --name lwa "$LWA_IMAGE" /lambda-adapter
           mkdir -p backend/api/cloud/src/main/jib/opt/extensions
           docker cp lwa:/lambda-adapter backend/api/cloud/src/main/jib/opt/extensions/lambda-adapter
           docker rm lwa
