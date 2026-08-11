@@ -7,8 +7,8 @@ from pathlib import Path
 from github import Github, GithubException
 
 TAP_REPO = "medusa-software-hq/homebrew-tap"
-RELEASES_REPO = "medusa-software-hq/counter-releases"
-FORMULA_PATH = "Formula/counter.rb"
+RELEASES_REPO = "medusa-software-hq/counter-aws-releases"
+FORMULA_PATH = "Formula/counter-aws.rb"
 
 
 def compute_sha256(path: Path) -> str:
@@ -18,14 +18,17 @@ def compute_sha256(path: Path) -> str:
 def render_formula(version: str, sha256: str) -> str:
     url = f"https://github.com/{RELEASES_REPO}/releases/download/{version}/counter-cli.jar"
     return textwrap.dedent(f"""\
-        class Counter < Formula
-          desc "Counter CLI"
-          homepage "https://github.com/medusa-software-hq/counter"
+        class CounterAws < Formula
+          desc "Counter CLI (AWS variant)"
+          homepage "https://github.com/medusa-software-hq/counter-aws"
           url "{url}"
           sha256 "{sha256}"
           version "{version}"
 
           depends_on "openjdk@21"
+
+          # Same `ms-counter` binary as the GCP counter formula — install one.
+          conflicts_with "counter", because: "both install the ms-counter binary"
 
           def install
             libexec.install "counter-cli.jar"
@@ -49,7 +52,7 @@ def main() -> None:
     token = os.environ["GITHUB_TOKEN"]
     sha256 = compute_sha256(args.jar)
     formula = render_formula(args.version, sha256)
-    message = f"Update Counter CLI to {args.version}"
+    message = f"Update Counter CLI (AWS variant) to {args.version}"
 
     repo = Github(token).get_repo(TAP_REPO)
 
