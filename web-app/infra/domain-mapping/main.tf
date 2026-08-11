@@ -1,15 +1,18 @@
 # Configuration
 #
-# The Cloud Run domain mapping is split out from the web foundation because it
-# must be applied by the shared org-level domain-mapper service account (the only
-# identity that's a verified owner of the domain), not by this project's CI/CD SA.
+# The public DNS record is split out from the web foundation to mirror the API:
+# the record points at infrastructure the foundation owns (the CloudFront
+# distribution), so it is applied after — and separately from — the foundation.
 
 terraform {
   required_version = ">= 1.14"
 
-  backend "gcs" {
-    bucket = "ms-tfstate-c1984596bdabf023"
-    prefix = "projects/counter/baseline/apps/web/domain-mapping" # 🎨 TEMPLATE EJECT: Update the prefix (!)
+  backend "s3" {
+    bucket       = "ms-tfstate-aws-682544514886"
+    key          = "projects/counter/aws/apps/web/domain-mapping/terraform.tfstate"
+    region       = "eu-central-1"
+    encrypt      = true
+    use_lockfile = true
   }
 
   required_providers {
@@ -26,14 +29,27 @@ module "common" {
   source = "../../../infra/common"
 }
 
-# Providers
+# The web foundation's outputs (the CloudFront distribution this record targets).
+data "terraform_remote_state" "web_foundation" {
+  backend = "s3"
+  config = {
+    bucket = module.common.aws_state_bucket_name
+    key    = "projects/counter/aws/apps/web/foundation/terraform.tfstate"
+    region = module.common.aws_primary_location
+  }
+}
 
-# Cloudflare provider for managing DNS records
+# Providers
 
 variable "cloudflare_api_token" {
   description = "Cloudflare API token."
   type        = string
   sensitive   = true
+}
+
+variable "cloudflare_zone_id" {
+  description = "Cloudflare zone ID for the organization domain."
+  type        = string
 }
 
 provider "cloudflare" {

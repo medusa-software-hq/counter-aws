@@ -1,0 +1,103 @@
+name: Deploy Web app
+
+# Build the SPA and publish it to S3 + CloudFront. The bundle bakes its config
+# at build time (VITE_API_URL), so there is no build-once/promote-by-digest here;
+# each push builds and deploys the current commit.
+#
+# The API URL is a same-origin path ("/api"): the SPA calls its own host, and the
+# CloudFront distribution routes /api to the API (added in a later issue). Until
+# then the SPA loads but its API calls have no edge to hit.
+
+on:
+  push:
+    branches: ["trunk/*"]
+    paths:
+      - "web-app/**"
+      - "proto/**"
+      - ".github/workflows/deploy-web-app.yml"
+  workflow_dispatch:
+
+permissions:
+  id-token: write # assume the CI/CD role via OIDC
+  contents: read
+
+jobs:
+  deploy:
+    name: Build & deploy
+    runs-on: ubuntu-latest
+    environment: production
+
+    env:
+      AWS_REGION: eu-central-1
+      AWS_ROLE_ARN: arn:aws:iam::682544514886:role/counter-aws-github-actions
+      NODE_VERSION: "24"
+      TERRAFORM_VERSION: 1.14
+      FRONTEND_PATH: web-app/frontend
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: yarn
+          cache-dependency-path: ${{ env.FRONTEND_PATH }}/yarn.lock
+
+      - uses: bufbuild/buf-action@v1.4.0
+        with:
+          setup_only: true
+
+      - uses: go-task/setup-task@v2
+
+      - name: Build the SPA
+        working-directory: ${{ env.FRONTEND_PATH }}
+        env:
+          # Same-origin: the SPA calls its own host under /api (see file header).
+          VITE_API_URL: /api
+        run: task build
+
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ~> ${{ env.TERRAFORM_VERSION }}
+
+      - name: Apply the web foundation
+        id: foundation
+        working-directory: web-app/infra/foundation
+        env:
+          TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          TF_VAR_cloudflare_zone_id: ${{ vars.CLOUDFLARE_ZONE_ID }}
+        run: |
+          terraform init -input=false
+          terraform apply -auto-approve -input=false
+          {
+            echo "bucket=$(terraform output -raw spa_bucket_name)"
+            echo "distribution_id=$(terraform output -raw cloudfront_distribution_id)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Publish the bundle
+        env:
+          BUCKET: ${{ steps.foundation.outputs.bucket }}
+          DISTRIBUTION_ID: ${{ steps.foundation.outputs.distribution_id }}
+        run: |
+          aws s3 sync "$FRONTEND_PATH/dist" "s3://$BUCKET" --delete
+          # index.html is the routing entry point — never cache it, so a new
+          # deploy is visible immediately (hashed assets are safe to cache).
+          aws s3 cp "$FRONTEND_PATH/dist/index.html" "s3://$BUCKET/index.html" \
+            --cache-control "no-cache" --content-type "text/html"
+          aws cloudfront create-invalidation \
+            --distribution-id "$DISTRIBUTION_ID" --paths "/*"
+
+      - name: Apply the web domain mapping
+        working-directory: web-app/infra/domain-mapping
+        env:
+          TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          TF_VAR_cloudflare_zone_id: ${{ vars.CLOUDFLARE_ZONE_ID }}
+        run: |
+          terraform init -input=false
+          terraform apply -auto-approve -input=false

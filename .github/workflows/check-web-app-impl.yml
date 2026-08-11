@@ -10,7 +10,6 @@ env:
   NODE_VERSION: 24
   NO_COLOR: 1
 
-  APP_PATH: web-app
   FRONTEND_PATH: web-app/frontend
 
 jobs:
@@ -44,40 +43,3 @@ jobs:
       - name: Build frontend
         run: task build
         working-directory: ${{ env.FRONTEND_PATH }}
-
-  check-server:
-    name: Check server
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v6.0.2
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: ${{ env.APP_PATH }}/server/go.mod
-
-      - uses: go-task/setup-task@v2
-
-      - name: Format, vet, test
-        run: task server:fmt:check server:vet server:test
-        working-directory: ${{ env.APP_PATH }}
-
-  build-image:
-    name: Build Docker image
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v6.0.2
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Build image
-        uses: docker/build-push-action@v7.1.0
-        with:
-          context: ${{ env.APP_PATH }}
-          build-contexts: |
-            proto=proto
-          push: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
