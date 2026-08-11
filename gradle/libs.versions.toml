@@ -1,5 +1,6 @@
 [versions]
 armeria = "1.38.0"
+awssdk = "2.29.0"
 detekt = "1.23.8"
 flyway = "11.13.0"
 grpc = "1.80.0"
@@ -22,6 +23,7 @@ versionCatalogUpdate = "1.1.0"
 
 [libraries]
 armeria-bom = { module = "com.linecorp.armeria:armeria-bom", version.ref = "armeria" }
+awssdk-secretsmanager = { module = "software.amazon.awssdk:secretsmanager", version.ref = "awssdk" }
 armeria-grpc = { module = "com.linecorp.armeria:armeria-grpc", version.ref = "armeria" }
 armeria-grpc-kotlin = { module = "com.linecorp.armeria:armeria-grpc-kotlin", version.ref = "armeria" }
 armeria-kotlin = { module = "com.linecorp.armeria:armeria-kotlin", version.ref = "armeria" }
