@@ -3,16 +3,17 @@
 # Cognito-issued JWT (issuer + audience below). Per environment (prod/staging
 # each get their own pool), operator-applied with the rest of the root infra.
 #
-# Federation is enabled in two steps because the SAML trust is bidirectional and
-# half of it is a console action: this pool + its Hosted-UI domain must exist
+# Federation was enabled in two steps because the SAML trust is bidirectional
+# and half of it is a console action: this pool + its Hosted-UI domain exist
 # first (they define the ACS URL + SP entity id the IdC SAML application points
-# at), then IdC emits its metadata, then the SAML provider below is wired via
-# `idc_saml_metadata_url`. Until that variable is set the pool stands alone.
+# at), then IdC emits its metadata, wired below via `idc_saml_metadata_url`. The
+# default is the created application's metadata endpoint; overriding with "" (or
+# a fresh URL) is how the trust is rebuilt if the IdC app is recreated.
 
 variable "idc_saml_metadata_url" {
-  description = "Metadata URL of the IAM Identity Center SAML application for this pool. Empty until the IdC app is created (see the identity runbook)."
+  description = "Metadata URL of the IAM Identity Center SAML application for this pool."
   type        = string
-  default     = ""
+  default     = "https://portal.sso.eu-central-1.amazonaws.com/saml/metadata/NjgyNTQ0NTE0ODg2X2lucy02OTg3MzUyNzdhNzdjOGU3"
 }
 
 locals {
@@ -41,9 +42,15 @@ resource "aws_cognito_user_pool" "main" {
   }
   auto_verified_attributes = ["email"]
 
-  # IdC group memberships arrive as a SAML attribute mapped here. `cognito:groups`
-  # is reserved for native pool groups, so federated groups live in a custom
-  # attribute the API reads instead.
+  # A pre-token Lambda stamps the user's IdC group names onto `cognito:groups`
+  # (IdC SAML can't carry them — see aws-cognito-groups.tf).
+  lambda_config {
+    pre_token_generation = aws_lambda_function.pretoken.arn
+  }
+
+  # Retained from the initial pool: federated group memberships can also be read
+  # from this attribute. Custom attributes can't be dropped without recreating
+  # the pool, and `cognito:groups` (set by the Lambda) is the primary path.
   schema {
     name                = "groups"
     attribute_data_type = "String"
@@ -74,11 +81,18 @@ resource "aws_cognito_identity_provider" "idc" {
     IDPSignout  = "true"
   }
 
-  # Left of `=` is the pool attribute, right is the SAML assertion attribute name
-  # the IdC application emits.
+  # Left of `=` is the pool attribute, right is the SAML assertion attribute the
+  # IdC application emits. Groups are not carried in the assertion (IdC SAML
+  # can't) — the pre-token Lambda populates cognito:groups instead.
   attribute_mapping = {
-    email           = "email"
-    "custom:groups" = "groups"
+    email = "email"
+  }
+
+  # Cognito fetches the metadata from MetadataURL and stores the resolved
+  # certificate/endpoints back into provider_details; ignore that so it doesn't
+  # read as perpetual drift.
+  lifecycle {
+    ignore_changes = [provider_details]
   }
 }
 
