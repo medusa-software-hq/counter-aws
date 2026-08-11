@@ -146,6 +146,73 @@ resource "aws_iam_role_policy" "cicd" {
         ]
         Resource = "arn:aws:secretsmanager:${module.common.aws_primary_location}:${module.common.aws_account_id}:secret:${module.common.aws_resource_prefix}-*"
       },
+      {
+        # Manage this variant's SPA bucket. `s3:Get*` (bucket-scoped, so it does
+        # not cover object reads) covers the many bucket sub-configs the AWS
+        # provider reads on every refresh without enumerating each one.
+        Sid    = "WebBucketManage"
+        Effect = "Allow"
+        Action = [
+          "s3:CreateBucket",
+          "s3:DeleteBucket",
+          "s3:Get*",
+          "s3:PutBucketPolicy",
+          "s3:DeleteBucketPolicy",
+          "s3:PutBucketPublicAccessBlock",
+          "s3:PutBucketOwnershipControls",
+          "s3:PutEncryptionConfiguration",
+          "s3:PutBucketTagging",
+          "s3:PutBucketVersioning",
+        ]
+        Resource = "arn:aws:s3:::${module.common.aws_resource_prefix}-web*"
+      },
+      {
+        Sid    = "WebBucketObjects"
+        Effect = "Allow"
+        Action = ["s3:ListBucket", "s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+        Resource = [
+          "arn:aws:s3:::${module.common.aws_resource_prefix}-web*",
+          "arn:aws:s3:::${module.common.aws_resource_prefix}-web*/*",
+        ]
+      },
+      {
+        # Manage the SPA's CloudFront distribution + its origin access control,
+        # and invalidate the edge cache on each deploy. CloudFront is a global
+        # service and does not support resource-scoped IAM, so this is on "*".
+        Sid    = "CloudFrontManage"
+        Effect = "Allow"
+        Action = [
+          "cloudfront:CreateDistribution",
+          "cloudfront:GetDistribution",
+          "cloudfront:GetDistributionConfig",
+          "cloudfront:UpdateDistribution",
+          "cloudfront:DeleteDistribution",
+          "cloudfront:TagResource",
+          "cloudfront:ListTagsForResource",
+          "cloudfront:CreateOriginAccessControl",
+          "cloudfront:GetOriginAccessControl",
+          "cloudfront:UpdateOriginAccessControl",
+          "cloudfront:DeleteOriginAccessControl",
+          "cloudfront:CreateInvalidation",
+          "cloudfront:GetInvalidation",
+        ]
+        Resource = "*"
+      },
+      {
+        # Request + validate the ACM certificate CloudFront serves (us-east-1).
+        # ACM certificate ARNs are server-generated, so RequestCertificate and
+        # the describe/tag calls require "*".
+        Sid    = "AcmManage"
+        Effect = "Allow"
+        Action = [
+          "acm:RequestCertificate",
+          "acm:DescribeCertificate",
+          "acm:ListTagsForCertificate",
+          "acm:AddTagsToCertificate",
+          "acm:DeleteCertificate",
+        ]
+        Resource = "*"
+      },
     ]
   })
 }

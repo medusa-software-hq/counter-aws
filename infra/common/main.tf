@@ -81,6 +81,11 @@ locals {
   api_subdomain_name = "api.${local.subdomain_label}"
   api_host_name      = "${local.api_subdomain_name}.${local.organization_domain}"
   api_url            = "https://${local.api_host_name}"
+
+  # The web app's public host — the SPA is served here (CloudFront + ACM), and
+  # the domain mapping points its DNS record at the distribution.
+  web_subdomain_name = local.subdomain_label
+  web_host_name      = "${local.web_subdomain_name}.${local.organization_domain}"
 }
 
 output "organization_domain" {
@@ -137,6 +142,14 @@ output "api_host_name" {
 
 output "api_url" {
   value = local.api_url
+}
+
+output "web_subdomain_name" {
+  value = local.web_subdomain_name
+}
+
+output "web_host_name" {
+  value = local.web_host_name
 }
 
 output "gh_releases_repo_name" {

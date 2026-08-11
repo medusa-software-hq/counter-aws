@@ -6,45 +6,21 @@ includes:
     dir: frontend
 
 tasks:
-  server:fmt:check:
-    desc: Check Go server formatting
-    dir: server
-    cmds:
-      - test -z "$(gofmt -l .)"
-
-  server:fmt:fix:
-    desc: Format the Go server
-    dir: server
-    cmds:
-      - gofmt -w .
-
-  server:vet:
-    desc: Vet the Go server
-    dir: server
-    cmds:
-      - go vet ./...
-
-  server:test:
-    desc: Test the Go server
-    dir: server
-    cmds:
-      - go test ./...
-
   fmt:check:
-    desc: Check formatting (frontend + Go server)
-    deps: [frontend:fmt:check, server:fmt:check]
+    desc: Check formatting
+    deps: [frontend:fmt:check]
 
   fmt:fix:
-    desc: Fix formatting (frontend + Go server)
-    deps: [frontend:fmt:fix, server:fmt:fix]
+    desc: Fix formatting
+    deps: [frontend:fmt:fix]
 
   lint:
     desc: Lint the app sources
-    deps: [frontend:lint, server:vet]
+    deps: [frontend:lint]
 
   analyze:
-    desc: Analyze the app sources (frontend typecheck + tests; Go server vet + tests)
-    deps: [frontend:typecheck, frontend:test, server:vet, server:test]
+    desc: Analyze the app sources (frontend typecheck + tests)
+    deps: [frontend:typecheck, frontend:test]
 
   build:
     desc: Build the frontend

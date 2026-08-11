@@ -101,16 +101,6 @@ resource "github_repository_ruleset" "trunk_branches" {
       }
 
       required_check {
-        context        = "${local.check_web_app_impl_job_name} / Check server"
-        integration_id = local.gh_actions_integration_id
-      }
-
-      required_check {
-        context        = "${local.check_web_app_impl_job_name} / Build Docker image"
-        integration_id = local.gh_actions_integration_id
-      }
-
-      required_check {
         context        = "${local.check_api_infra_job_name} / Check Terraform configuration"
         integration_id = local.gh_actions_integration_id
       }
