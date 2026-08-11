@@ -91,6 +91,68 @@ resource "aws_iam_role_policy" "cicd" {
         ]
         Resource = "arn:aws:ecr:${module.common.aws_primary_location}:${module.common.aws_account_id}:repository/${module.common.aws_resource_prefix}-*"
       },
+      {
+        # Apply the API foundation from CI: manage this variant's Lambda + URL.
+        Sid    = "LambdaManage"
+        Effect = "Allow"
+        Action = [
+          "lambda:CreateFunction",
+          "lambda:GetFunction",
+          "lambda:UpdateFunctionCode",
+          "lambda:UpdateFunctionConfiguration",
+          "lambda:DeleteFunction",
+          "lambda:TagResource",
+          "lambda:ListTags",
+          "lambda:GetFunctionUrlConfig",
+          "lambda:CreateFunctionUrlConfig",
+          "lambda:UpdateFunctionUrlConfig",
+          "lambda:DeleteFunctionUrlConfig",
+        ]
+        Resource = "arn:aws:lambda:${module.common.aws_primary_location}:${module.common.aws_account_id}:function:${module.common.aws_resource_prefix}-*"
+      },
+      {
+        # Manage the Lambda execution role and pass it to the Lambda service.
+        Sid    = "LambdaRoleManage"
+        Effect = "Allow"
+        Action = [
+          "iam:CreateRole",
+          "iam:GetRole",
+          "iam:DeleteRole",
+          "iam:TagRole",
+          "iam:ListRolePolicies",
+          "iam:ListAttachedRolePolicies",
+          "iam:GetRolePolicy",
+          "iam:PutRolePolicy",
+          "iam:DeleteRolePolicy",
+          "iam:AttachRolePolicy",
+          "iam:DetachRolePolicy",
+        ]
+        Resource = "arn:aws:iam::${module.common.aws_account_id}:role/${module.common.aws_resource_prefix}-*"
+      },
+      {
+        Sid      = "LambdaPassRole"
+        Effect   = "Allow"
+        Action   = "iam:PassRole"
+        Resource = "arn:aws:iam::${module.common.aws_account_id}:role/${module.common.aws_resource_prefix}-*"
+        Condition = {
+          StringEquals = { "iam:PassedToService" = "lambda.amazonaws.com" }
+        }
+      },
+      {
+        # Manage this variant's secrets (the DB connection string).
+        Sid    = "SecretsManage"
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:CreateSecret",
+          "secretsmanager:DescribeSecret",
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:PutSecretValue",
+          "secretsmanager:TagResource",
+          "secretsmanager:DeleteSecret",
+          "secretsmanager:GetResourcePolicy",
+        ]
+        Resource = "arn:aws:secretsmanager:${module.common.aws_primary_location}:${module.common.aws_account_id}:secret:${module.common.aws_resource_prefix}-*"
+      },
     ]
   })
 }
