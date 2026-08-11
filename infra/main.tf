@@ -3,12 +3,13 @@
 terraform {
   required_version = ">= 1.14"
 
-  # State bucket is created by infra/bootstrap; the name is hard-coded there too
-  # (backend blocks take no variables). The default workspace (prod) keys at
-  # `root/…`; other workspaces get an `env:/<workspace>/` prefix.
+  # Shared state bucket, provisioned by the meta repo; the name is also in
+  # common (backend blocks take no variables). Counter keys under its own
+  # prefix; the default workspace (prod) keys at that prefix, other workspaces
+  # get an `env:/<workspace>/` prefix.
   backend "s3" {
-    bucket       = "ms-counter-tfstate-682544514886"
-    key          = "root/terraform.tfstate"
+    bucket       = "ms-tfstate-aws-682544514886"
+    key          = "projects/counter/aws/root/terraform.tfstate"
     region       = "eu-central-1"
     encrypt      = true
     use_lockfile = true
@@ -18,6 +19,10 @@ terraform {
     github = {
       source  = "integrations/github"
       version = "~> 6.11"
+    }
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
     }
   }
 }
@@ -46,4 +51,9 @@ provider "github" {
 
 data "github_repository" "this" {
   full_name = "${module.common.gh_organization_name}/${module.common.gh_repo_name}"
+}
+
+# AWS
+provider "aws" {
+  region = module.common.aws_primary_location
 }

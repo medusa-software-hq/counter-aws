@@ -1,0 +1,96 @@
+# The account-wide GitHub Actions OIDC provider lives in the meta repo; look it
+# up here rather than owning it.
+data "aws_iam_openid_connect_provider" "github" {
+  url = "https://token.actions.githubusercontent.com"
+}
+
+locals {
+  # The CI/CD role + registry are account-level singletons for this variant, but
+  # this root runs per environment (workspace). Create them only in the prod
+  # (default) workspace so a staging apply doesn't collide on the shared names.
+  create_shared_aws = module.common.environment == "prod" ? 1 : 0
+
+  aws_state_bucket_arn = "arn:aws:s3:::${module.common.aws_state_bucket_name}"
+  # Counter's state lives under this prefix (and under env:/<workspace>/… for
+  # non-default workspaces).
+  aws_state_prefix = "projects/${module.common.project_base_name}/${module.common.project_variant}"
+}
+
+# Role GitHub Actions assumes via OIDC to deploy this variant, scoped to the repo.
+resource "aws_iam_role" "cicd" {
+  count = local.create_shared_aws
+
+  name = "${module.common.aws_resource_prefix}-github-actions"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Federated = data.aws_iam_openid_connect_provider.github.arn }
+      Action    = "sts:AssumeRoleWithWebIdentity"
+      Condition = {
+        StringEquals = {
+          "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+        }
+        StringLike = {
+          "token.actions.githubusercontent.com:sub" = "repo:${module.common.gh_organization_name}/${module.common.gh_repo_name}:*"
+        }
+      }
+    }]
+  })
+}
+
+# What CI/CD may do today: read/write this variant's Terraform state (its prefix
+# in the shared bucket) and push container images. Service permissions (Lambda,
+# CloudFront, …) are added by the issues that introduce those services.
+resource "aws_iam_role_policy" "cicd" {
+  count = local.create_shared_aws
+
+  name = "state-and-ecr"
+  role = aws_iam_role.cicd[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "TerraformStateList"
+        Effect   = "Allow"
+        Action   = "s3:ListBucket"
+        Resource = local.aws_state_bucket_arn
+        Condition = {
+          StringLike = { "s3:prefix" = ["${local.aws_state_prefix}/*", "env:/*/${local.aws_state_prefix}/*"] }
+        }
+      },
+      {
+        Sid    = "TerraformStateObjects"
+        Effect = "Allow"
+        Action = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+        Resource = [
+          "${local.aws_state_bucket_arn}/${local.aws_state_prefix}/*",
+          "${local.aws_state_bucket_arn}/env:/*/${local.aws_state_prefix}/*",
+        ]
+      },
+      {
+        Sid      = "EcrAuth"
+        Effect   = "Allow"
+        Action   = "ecr:GetAuthorizationToken"
+        Resource = "*"
+      },
+      {
+        Sid    = "EcrPushPull"
+        Effect = "Allow"
+        Action = [
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage",
+          "ecr:PutImage",
+          "ecr:InitiateLayerUpload",
+          "ecr:UploadLayerPart",
+          "ecr:CompleteLayerUpload",
+          "ecr:DescribeRepositories",
+        ]
+        Resource = "arn:aws:ecr:${module.common.aws_primary_location}:${module.common.aws_account_id}:repository/${module.common.aws_resource_prefix}-*"
+      },
+    ]
+  })
+}

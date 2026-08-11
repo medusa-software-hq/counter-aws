@@ -55,6 +55,17 @@ locals {
   project_base_name = "counter" # 🎨 TEMPLATE EJECT: Choose an org-unique project base name
   project_variant   = "aws"     # 🎨 TEMPLATE EJECT: Choose a project-unique variant name
 
+  aws_primary_location = "eu-central-1"
+  aws_account_id       = "682544514886"
+
+  # Shared AWS state bucket — provisioned by the meta repo, keyed per repo.
+  # Counter keys under `projects/<base>/<variant>/`. Also hard-coded in the
+  # backend blocks, which take no variables.
+  aws_state_bucket_name = "ms-tfstate-aws-${local.aws_account_id}"
+
+  # Prefix for this variant's AWS resources, e.g. counter-aws-github-actions.
+  aws_resource_prefix = "${local.project_base_name}-${local.project_variant}"
+
   gh_environment_name  = local.selected_environment.gh_environment_name
   resource_name_suffix = local.selected_environment.resource_name_suffix
 
@@ -94,6 +105,22 @@ output "project_base_name" {
 
 output "project_variant" {
   value = local.project_variant
+}
+
+output "aws_primary_location" {
+  value = local.aws_primary_location
+}
+
+output "aws_account_id" {
+  value = local.aws_account_id
+}
+
+output "aws_state_bucket_name" {
+  value = local.aws_state_bucket_name
+}
+
+output "aws_resource_prefix" {
+  value = local.aws_resource_prefix
 }
 
 output "subdomain_label" {
