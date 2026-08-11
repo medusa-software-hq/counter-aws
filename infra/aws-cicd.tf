@@ -98,21 +98,9 @@ resource "aws_iam_role_policy" "cicd" {
       },
       {
         # Apply the API foundation from CI: manage this variant's Lambda + URL.
-        Sid    = "LambdaManage"
-        Effect = "Allow"
-        Action = [
-          "lambda:CreateFunction",
-          "lambda:GetFunction",
-          "lambda:UpdateFunctionCode",
-          "lambda:UpdateFunctionConfiguration",
-          "lambda:DeleteFunction",
-          "lambda:TagResource",
-          "lambda:ListTags",
-          "lambda:GetFunctionUrlConfig",
-          "lambda:CreateFunctionUrlConfig",
-          "lambda:UpdateFunctionUrlConfig",
-          "lambda:DeleteFunctionUrlConfig",
-        ]
+        Sid      = "LambdaManage"
+        Effect   = "Allow"
+        Action   = "lambda:*"
         Resource = "arn:aws:lambda:${module.common.aws_primary_location}:${module.common.aws_account_id}:function:${module.common.aws_resource_prefix}-*"
       },
       {

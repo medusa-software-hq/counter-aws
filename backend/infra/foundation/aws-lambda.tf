@@ -47,10 +47,10 @@ resource "aws_lambda_function" "api" {
   image_uri     = "${local.ecr_repository_url}:${var.image_tag}"
   architectures = ["x86_64"]
 
-  # A JVM cold start needs headroom; more memory also means more vCPU, which
-  # shortens it. Timeout covers a cold start plus Neon's own resume.
+  # A full cold start (JVM + AWS SDK + Neon resume + Flyway) runs ~40s, so the
+  # timeout is generous; more memory = more vCPU, shortening it. SnapStart is the real fix (epic follow-up).
   memory_size = 2048
-  timeout     = 30
+  timeout     = 90
 
   environment {
     variables = {
