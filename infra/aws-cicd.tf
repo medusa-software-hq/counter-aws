@@ -32,8 +32,13 @@ resource "aws_iam_role" "cicd" {
         StringEquals = {
           "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
         }
+        # Match both the legacy mutable subject and GitHub's newer immutable one
+        # (`repo:org@<org-id>/repo@<repo-id>:…`), which this repo now issues.
         StringLike = {
-          "token.actions.githubusercontent.com:sub" = "repo:${module.common.gh_organization_name}/${module.common.gh_repo_name}:*"
+          "token.actions.githubusercontent.com:sub" = [
+            "repo:${module.common.gh_organization_name}/${module.common.gh_repo_name}:*",
+            "repo:${module.common.gh_organization_name}@*/${module.common.gh_repo_name}@*:*",
+          ]
         }
       }
     }]
