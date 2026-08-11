@@ -1,0 +1,79 @@
+name: Deploy API
+
+on:
+  push:
+    branches: ["trunk/*"]
+    paths:
+      - "backend/api/**"
+      - "backend/infra/foundation/**"
+      - "gradle/**"
+      - "settings.gradle.kts"
+      - "build.gradle.kts"
+  workflow_dispatch:
+
+permissions:
+  id-token: write # assume the CI/CD role via OIDC
+  contents: read
+
+jobs:
+  deploy:
+    name: Build & deploy
+    runs-on: ubuntu-latest
+    environment: production
+
+    env:
+      AWS_REGION: eu-central-1
+      AWS_ROLE_ARN: arn:aws:iam::682544514886:role/counter-aws-github-actions
+      ECR_REPOSITORY: 682544514886.dkr.ecr.eu-central-1.amazonaws.com/counter-aws-api
+      LWA_IMAGE: public.ecr.aws/awsguru/aws-lambda-adapter:0.9.1
+      JAVA_VERSION: "21"
+      TERRAFORM_VERSION: 1.14
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Fetch the Lambda Web Adapter
+        # Extract the adapter binary from the official image into jib's extra
+        # directory, so the built image carries it at /opt/extensions/.
+        run: |
+          docker create --name lwa "$LWA_IMAGE"
+          mkdir -p backend/api/cloud/src/main/jib/opt/extensions
+          docker cp lwa:/lambda-adapter backend/api/cloud/src/main/jib/opt/extensions/lambda-adapter
+          docker rm lwa
+
+      - name: Build & push image
+        # Push before applying: a container Lambda's image must exist in ECR
+        # before the function can be created.
+        run: |
+          ./gradlew :backend:api:cloud:jib \
+            -Pjib.imageRef="$ECR_REPOSITORY" \
+            -Pjib.imageTag="$GITHUB_SHA"
+
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ~> ${{ env.TERRAFORM_VERSION }}
+
+      - name: Apply the API foundation
+        working-directory: backend/infra/foundation
+        env:
+          TF_VAR_neon_api_key: ${{ secrets.NEON_API_KEY }}
+          TF_VAR_image_tag: ${{ github.sha }}
+        run: |
+          terraform init -input=false
+          terraform apply -auto-approve -input=false

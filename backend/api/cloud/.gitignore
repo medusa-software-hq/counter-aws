@@ -1,1 +1,2 @@
-build/
+# The Lambda Web Adapter binary is fetched at deploy time, never committed.
+/src/main/jib/
