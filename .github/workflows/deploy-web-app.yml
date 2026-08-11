@@ -60,7 +60,12 @@ jobs:
         env:
           # Same-origin: the SPA calls its own host under /api (see file header).
           VITE_API_URL: /api
-        run: task build
+        # Install first, on its own: `task build` runs install/proto/typecheck as
+        # parallel deps, and on a cold node_modules the concurrent yarn processes
+        # race and corrupt the install. A single install up front warms it.
+        run: |
+          yarn install --immutable
+          task build
 
       - uses: hashicorp/setup-terraform@v4
         with:
