@@ -1,8 +1,10 @@
 # The API runs as a container Lambda built from the shared ECR repo (created by
 # the root infra). Armeria listens on 8080; the AWS Lambda Web Adapter baked
 # into the image bridges Lambda invocations to it.
-data "aws_ecr_repository" "api" {
-  name = "${module.common.aws_resource_prefix}-api"
+locals {
+  # Deterministic ECR repo URL, built rather than looked up via a data source
+  # (which would need ecr:DescribeImages on the CI role).
+  ecr_repository_url = "${module.common.aws_account_id}.dkr.ecr.${module.common.aws_primary_location}.amazonaws.com/${module.common.aws_resource_prefix}-api"
 }
 
 resource "aws_iam_role" "api" {
@@ -42,7 +44,7 @@ resource "aws_lambda_function" "api" {
   function_name = "${module.common.aws_resource_prefix}-api${module.common.resource_name_suffix}"
   role          = aws_iam_role.api.arn
   package_type  = "Image"
-  image_uri     = "${data.aws_ecr_repository.api.repository_url}:${var.image_tag}"
+  image_uri     = "${local.ecr_repository_url}:${var.image_tag}"
   architectures = ["x86_64"]
 
   # A JVM cold start needs headroom; more memory also means more vCPU, which
