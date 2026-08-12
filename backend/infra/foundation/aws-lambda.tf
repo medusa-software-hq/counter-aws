@@ -65,11 +65,24 @@ resource "aws_lambda_function" "api" {
   depends_on = [aws_iam_role_policy_attachment.api_basic_execution]
 }
 
-# Private for now — reachable only by callers with IAM permission. The public
-# entry point (API Gateway + Cognito authorizer) comes in a later issue.
+# IAM-authorized: the only caller is this account's CloudFront distribution, which
+# signs requests via an Origin Access Control (see the web foundation). No public
+# unsigned access. A Cognito authorizer at the edge is a later slice.
 resource "aws_lambda_function_url" "api" {
   function_name      = aws_lambda_function.api.function_name
   authorization_type = "AWS_IAM"
+}
+
+# Let CloudFront (OAC) invoke the function URL. Scoped to any distribution in this
+# account by wildcard SourceArn, which avoids a circular dependency on the
+# distribution id that lives in the web foundation's separate state.
+resource "aws_lambda_permission" "cloudfront_invoke_url" {
+  statement_id           = "AllowCloudFrontInvokeFunctionUrl"
+  action                 = "lambda:InvokeFunctionUrl"
+  function_name          = aws_lambda_function.api.function_name
+  principal              = "cloudfront.amazonaws.com"
+  function_url_auth_type = "AWS_IAM"
+  source_arn             = "arn:aws:cloudfront::${module.common.aws_account_id}:distribution/*"
 }
 
 output "api_function_name" {
