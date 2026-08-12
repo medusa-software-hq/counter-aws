@@ -41,3 +41,6 @@ terraform.rc
 
 # Task cache
 .task/
+
+# Lambda build artifacts (zipped from source at plan time)
+.build/
