@@ -5,6 +5,8 @@ import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient
 private const val portEnvVarName = "PORT"
 private const val corsOriginRegexEnvVarName = "CORS_ALLOWED_ORIGIN_REGEX"
 private const val databaseUrlSecretArnEnvVarName = "DATABASE_URL_SECRET_ARN"
+private const val cognitoIssuerEnvVarName = "COGNITO_ISSUER"
+private const val cognitoAudienceEnvVarName = "COGNITO_AUDIENCE"
 
 // Lambda has no equivalent of Cloud Run's secret-to-env mapping, so the app
 // fetches the Neon connection string from Secrets Manager itself.
@@ -26,12 +28,20 @@ fun main() {
       System.getenv(databaseUrlSecretArnEnvVarName)?.let { fetchDatabaseUrl(it) }
           ?: error("$databaseUrlSecretArnEnvVarName environment variable must be set")
 
-  // No real authentication yet: the identity provider is mid-migration, so this runs a pass-through
-  // gate. The service is kept private upstream until a JWT verifier is wired in.
+  val cognitoIssuer =
+      System.getenv(cognitoIssuerEnvVarName)
+          ?: error("$cognitoIssuerEnvVarName environment variable must be set")
+
+  val cognitoAudience =
+      System.getenv(cognitoAudienceEnvVarName)
+          ?: error("$cognitoAudienceEnvVarName environment variable must be set")
+
+  val verifier = CognitoJwtVerifier(cognitoIssuer, cognitoAudience, cognitoJwkSource(cognitoIssuer))
+
   buildServer(
           originRegex = corsOriginRegex,
           port = port,
-          auth = NoOpAuthDecorator,
+          auth = CognitoAuthDecorator(verifier),
           counterStore = PostgresCounterStore.build(databaseUrl),
       )
       .start()
