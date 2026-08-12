@@ -195,6 +195,13 @@ resource "aws_iam_role_policy" "cicd" {
           "cloudfront:DeleteOriginAccessControl",
           "cloudfront:CreateInvalidation",
           "cloudfront:GetInvalidation",
+          # The /api behavior strips its path prefix with a CloudFront Function.
+          "cloudfront:CreateFunction",
+          "cloudfront:DescribeFunction",
+          "cloudfront:GetFunction",
+          "cloudfront:UpdateFunction",
+          "cloudfront:PublishFunction",
+          "cloudfront:DeleteFunction",
         ]
         Resource = "*"
       },
