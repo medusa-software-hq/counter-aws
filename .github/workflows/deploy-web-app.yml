@@ -5,8 +5,8 @@ name: Deploy Web app
 # each push builds and deploys the current commit.
 #
 # The API URL is a same-origin path ("/api"): the SPA calls its own host, and the
-# CloudFront distribution routes /api to the API (added in a later issue). Until
-# then the SPA loads but its API calls have no edge to hit.
+# CloudFront distribution routes /api to the Lambda function URL (see the web
+# foundation), so there is no cross-origin hop.
 
 on:
   push:

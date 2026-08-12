@@ -7,6 +7,21 @@ locals {
   # Globally-unique bucket name (S3 names are account-agnostic). Per environment
   # via the suffix; the account id keeps it unique across accounts.
   spa_bucket_name = "${module.common.aws_resource_prefix}-web${module.common.resource_name_suffix}-${module.common.aws_account_id}"
+
+  # The Lambda function URL, as a bare host for a CloudFront origin (no scheme, no
+  # trailing slash).
+  api_origin_host = replace(trimsuffix(data.terraform_remote_state.api.outputs.api_function_url, "/"), "https://", "")
+}
+
+# The API lives in its own Terraform state; read its function URL from there.
+data "terraform_remote_state" "api" {
+  backend = "s3"
+
+  config = {
+    bucket = "ms-tfstate-aws-682544514886"
+    key    = "projects/counter/aws/api/foundation/terraform.tfstate"
+    region = "eu-central-1"
+  }
 }
 
 resource "aws_s3_bucket" "spa" {
@@ -47,6 +62,32 @@ resource "aws_cloudfront_origin_access_control" "spa" {
   signing_protocol                  = "sigv4"
 }
 
+# CloudFront signs requests to the IAM-authorized function URL with SigV4.
+resource "aws_cloudfront_origin_access_control" "api" {
+  name                              = "${module.common.aws_resource_prefix}-api${module.common.resource_name_suffix}"
+  origin_access_control_origin_type = "lambda"
+  signing_behavior                  = "always"
+  signing_protocol                  = "sigv4"
+}
+
+# The SPA calls same-origin "/api/...", but the gRPC service is mounted at the
+# root — strip the "/api" prefix before the request reaches the function URL.
+resource "aws_cloudfront_function" "strip_api_prefix" {
+  name    = "${module.common.aws_resource_prefix}-strip-api${module.common.resource_name_suffix}"
+  runtime = "cloudfront-js-2.0"
+  publish = true
+  code    = <<-JS
+    function handler(event) {
+      var request = event.request;
+      request.uri = request.uri.replace(/^\/api/, '');
+      if (request.uri === '') {
+        request.uri = '/';
+      }
+      return request;
+    }
+  JS
+}
+
 resource "aws_cloudfront_distribution" "spa" {
   enabled             = true
   default_root_object = "index.html"
@@ -60,6 +101,19 @@ resource "aws_cloudfront_distribution" "spa" {
     origin_access_control_id = aws_cloudfront_origin_access_control.spa.id
   }
 
+  origin {
+    origin_id                = "api-func-url"
+    domain_name              = local.api_origin_host
+    origin_access_control_id = aws_cloudfront_origin_access_control.api.id
+
+    custom_origin_config {
+      http_port              = 80
+      https_port             = 443
+      origin_protocol_policy = "https-only"
+      origin_ssl_protocols   = ["TLSv1.2"]
+    }
+  }
+
   default_cache_behavior {
     target_origin_id       = "spa-s3"
     viewer_protocol_policy = "redirect-to-https"
@@ -68,6 +122,28 @@ resource "aws_cloudfront_distribution" "spa" {
     compress               = true
     # AWS-managed "CachingOptimized" policy.
     cache_policy_id = "658327ea-f89d-4fab-a63d-7e88639e58f6"
+  }
+
+  # The API: pass every method through to the Lambda, uncached. gRPC-Web bodies are
+  # POSTs that must not be buffered or cached.
+  ordered_cache_behavior {
+    path_pattern           = "/api/*"
+    target_origin_id       = "api-func-url"
+    viewer_protocol_policy = "https-only"
+    allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+    cached_methods         = ["GET", "HEAD"]
+    compress               = false
+    # AWS-managed "CachingDisabled".
+    cache_policy_id = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+    # AWS-managed "AllViewerExceptHostHeader": forward everything (incl. the future
+    # Authorization header) but let CloudFront set the Host so SigV4 signing matches
+    # the function URL.
+    origin_request_policy_id = "b689b0a8-53d0-40ab-baf2-68738e2966ac"
+
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.strip_api_prefix.arn
+    }
   }
 
   # Client-side routing: unknown paths are SPA routes, not real objects, so serve
