@@ -7,6 +7,8 @@ import com.linecorp.armeria.server.Server
 import com.linecorp.armeria.server.cors.CorsService
 import com.linecorp.armeria.server.grpc.GrpcService
 import com.linecorp.armeria.server.healthcheck.HealthCheckService
+import io.netty.handler.logging.LogLevel
+import io.netty.handler.logging.LoggingHandler
 
 fun buildServer(
     originRegex: String,
@@ -46,6 +48,14 @@ fun buildServer(
   return Server.builder()
       .apply {
         http(port)
+
+        // TEMPORARY DIAGNOSTIC: dump raw inbound/outbound bytes at the head of every connection so
+        // we
+        // can see exactly what the Lambda Web Adapter puts on the wire (HTTP version, Upgrade
+        // headers, h2 preface). Remove once the LWA serving issue is fixed.
+        childChannelPipelineCustomizer {
+          it.addFirst("wiredump", LoggingHandler("WIREDUMP", LogLevel.INFO))
+        }
 
         // Health check is unauthenticated (used by platform health probes).
         service("/health", HealthCheckService.of())
