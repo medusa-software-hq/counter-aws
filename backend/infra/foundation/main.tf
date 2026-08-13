@@ -20,6 +20,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 5.18"
+    }
   }
 }
 
@@ -47,6 +51,17 @@ variable "cognito_spa_client_id" {
   type        = string
 }
 
+variable "cloudflare_api_token" {
+  description = "Cloudflare API token (manages the API custom domain's ACM DNS-validation records)."
+  type        = string
+  sensitive   = true
+}
+
+variable "cloudflare_zone_id" {
+  description = "Cloudflare zone ID for the organization domain."
+  type        = string
+}
+
 # Neon (serverless Postgres) backs the counter store; see neon.tf.
 provider "neon" {
   api_key = var.neon_api_key
@@ -54,5 +69,9 @@ provider "neon" {
 
 provider "aws" {
   region = module.common.aws_primary_location
+}
+
+provider "cloudflare" {
+  api_token = var.cloudflare_api_token
 }
 

@@ -31,15 +31,13 @@ locals {
   # GitHub Actions integration ID (discovered manually)
   gh_actions_integration_id = 15368
 
-  check_workflows_job_name              = "Workflows"
-  check_infra_job_name                  = "Infra (root)"
-  check_web_app_infra_job_name          = "Web app (infra)"
-  check_web_app_domain_mapping_job_name = "Web app (domain mapping)"
-  check_web_app_impl_job_name           = "Web app (implementation)"
-  check_api_infra_job_name              = "API (infra)"
-  check_api_domain_mapping_job_name     = "API (domain mapping)"
-  check_api_impl_job_name               = "API (implementation)"
-  check_cli_job_name                    = "CLI"
+  check_workflows_job_name     = "Workflows"
+  check_infra_job_name         = "Infra (root)"
+  check_web_app_infra_job_name = "Web app (infra)"
+  check_web_app_impl_job_name  = "Web app (implementation)"
+  check_api_infra_job_name     = "API (infra)"
+  check_api_impl_job_name      = "API (implementation)"
+  check_cli_job_name           = "CLI"
 }
 
 # Branch protection ruleset for the trunk branches — every `trunk/*` variant
@@ -91,22 +89,12 @@ resource "github_repository_ruleset" "trunk_branches" {
       }
 
       required_check {
-        context        = "${local.check_web_app_domain_mapping_job_name} / Check Terraform configuration"
-        integration_id = local.gh_actions_integration_id
-      }
-
-      required_check {
         context        = "${local.check_web_app_impl_job_name} / Build frontend"
         integration_id = local.gh_actions_integration_id
       }
 
       required_check {
         context        = "${local.check_api_infra_job_name} / Check Terraform configuration"
-        integration_id = local.gh_actions_integration_id
-      }
-
-      required_check {
-        context        = "${local.check_api_domain_mapping_job_name} / Check Terraform configuration"
         integration_id = local.gh_actions_integration_id
       }
 
