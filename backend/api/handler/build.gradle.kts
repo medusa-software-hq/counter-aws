@@ -6,6 +6,7 @@ plugins {
   alias(libs.plugins.ksp)
   alias(libs.plugins.micronaut.application)
   alias(libs.plugins.micronaut.aot)
+  alias(libs.plugins.sqldelight)
 }
 
 // Pin the version so the native-runtime zip has a deterministic name the deploy infra can
@@ -30,7 +31,28 @@ dependencies {
   implementation("io.micronaut.kotlin:micronaut-kotlin-runtime")
   implementation("io.micronaut.serde:micronaut-serde-jackson")
 
+  // Persistence: SQLDelight owns the schema (from the .sq) and generates type-safe queries over its
+  // JDBC driver; pgjdbc talks to Neon; the AWS SDK reads the connection string from Secrets
+  // Manager.
+  // pgjdbc and the SDK ship GraalVM reachability metadata (pgjdbc via the community repository
+  // enabled below, the SDK inside its own jars), so native needs no hand-written reflection config.
+  implementation(libs.sqldelight.jdbc.driver)
+  implementation(libs.postgresql)
+  implementation("software.amazon.awssdk:secretsmanager:2.29.52")
+
   runtimeOnly(libs.logback.classic)
+}
+
+// SQLDelight generates a type-safe query layer (CounterDatabase) from the Postgres-dialect .sq; the
+// schema it emits (CREATE TABLE IF NOT EXISTS) is applied idempotently at cold start via
+// Schema.create. Versioned .sqm migrations can be added at the first schema change.
+sqldelight {
+  databases {
+    create("CounterDatabase") {
+      packageName = "software.medusa.counter.db"
+      dialect(libs.sqldelight.postgresql.dialect)
+    }
+  }
 }
 
 micronaut {
@@ -55,9 +77,14 @@ micronaut {
   }
 }
 
-// Native image is cross-built in Docker (see the deploy workflow), so the local GraalVM toolchain
-// is irrelevant.
-graalvmNative.toolchainDetection = false
+graalvmNative {
+  // Native image is cross-built in Docker (see the deploy workflow), so the local GraalVM toolchain
+  // is irrelevant.
+  toolchainDetection = false
+  // Pull reachability metadata (reflection/resource/JNI config) for third-party libraries — notably
+  // the pgjdbc driver — from the GraalVM community repository, keyed by dependency coordinates.
+  metadataRepository { enabled = true }
+}
 
 tasks.named<NativeImageDockerfile>("dockerfileNative") { jdkVersion = "21" }
 
@@ -102,9 +129,16 @@ val fabriktGenerate by
 
 kotlin.sourceSets.named("main") { kotlin.srcDir(fabriktOut.map { it.dir("src/main/kotlin") }) }
 
-// KSP reads the generated sources before compilation, so it (not compileKotlin) is the consumer.
-// KSP registers its task after this script configures, so match it lazily.
-tasks.matching { it.name == "kspKotlin" }.configureEach { dependsOn(fabriktGenerate) }
+// KSP reads the generated sources before compilation, so it (not compileKotlin) is the consumer of
+// both generators. KSP registers its task after this script configures, so match it lazily.
+tasks
+    .matching { it.name == "kspKotlin" }
+    .configureEach {
+      dependsOn(fabriktGenerate)
+      dependsOn(
+          tasks.matching { it.name.startsWith("generate") && it.name.contains("CounterDatabase") }
+      )
+    }
 
 // Generated sources live on the compile path but must not be linted/formatted.
 tasks.withType<com.ncorti.ktfmt.gradle.tasks.KtfmtBaseTask>().configureEach {

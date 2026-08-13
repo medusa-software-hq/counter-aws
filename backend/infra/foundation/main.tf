@@ -47,9 +47,7 @@ variable "cognito_spa_client_id" {
   type        = string
 }
 
-# The counter is in-memory for now, so no Neon resources exist in this configuration. The provider is
-# retained so Terraform can destroy the previously-provisioned project on apply, and because a later
-# slice re-introduces Postgres-backed persistence.
+# Neon (serverless Postgres) backs the counter store; see neon.tf.
 provider "neon" {
   api_key = var.neon_api_key
 }

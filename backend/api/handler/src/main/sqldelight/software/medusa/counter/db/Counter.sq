@@ -1,0 +1,17 @@
+-- The single-row counter table. IF NOT EXISTS makes Schema.create idempotent, so it can run on every
+-- Lambda cold start without a version-tracking step; versioned .sqm migrations get added at the first
+-- schema change.
+CREATE TABLE IF NOT EXISTS counter (
+  id    TEXT   NOT NULL PRIMARY KEY,
+  value BIGINT NOT NULL DEFAULT 0
+);
+
+selectValue:
+SELECT value FROM counter WHERE id = ?;
+
+-- Upsert so the first increment/decrement seeds the row: apply the delta, or add it to the existing
+-- value on conflict, returning the result -- one atomic statement, no read-modify-write race.
+adjustValue:
+INSERT INTO counter (id, value) VALUES (?, ?)
+ON CONFLICT (id) DO UPDATE SET value = counter.value + EXCLUDED.value
+RETURNING value;

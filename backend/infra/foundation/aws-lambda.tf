@@ -23,6 +23,21 @@ resource "aws_iam_role_policy_attachment" "api_basic_execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
+# Read only this environment's DB connection-string secret at startup.
+resource "aws_iam_role_policy" "api_read_database_url" {
+  name = "read-database-url"
+  role = aws_iam_role.api.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = "secretsmanager:GetSecretValue"
+      Resource = aws_secretsmanager_secret.database_url.arn
+    }]
+  })
+}
+
 resource "aws_lambda_function" "api" {
   function_name = "${module.common.aws_resource_prefix}-api${module.common.resource_name_suffix}"
   role          = aws_iam_role.api.arn
@@ -37,11 +52,19 @@ resource "aws_lambda_function" "api" {
   # its absence, and every real plan/apply computes the true hash so a rebuilt binary redeploys.
   source_code_hash = fileexists(local.lambda_zip) ? filebase64sha256(local.lambda_zip) : null
 
-  # A GraalVM-native cold start runs in a few hundred milliseconds, so modest memory (which also sets
-  # the vCPU share) and a short timeout are ample. The counter is held in memory for now, so no DB
-  # connection to establish at startup.
+  # A GraalVM-native cold start is fast, but the first request may also wake the serverless Neon
+  # database and open a TLS connection, so allow some headroom. More memory also raises the vCPU
+  # share, which shortens the connect.
   memory_size = 512
-  timeout     = 10
+  timeout     = 30
+
+  # The Lambda fetches the Neon connection string from Secrets Manager itself (Lambda has no
+  # secret-to-env mapping), so the DB password never sits in the function's plaintext config.
+  environment {
+    variables = {
+      DATABASE_URL_SECRET_ARN = aws_secretsmanager_secret.database_url.arn
+    }
+  }
 
   depends_on = [aws_iam_role_policy_attachment.api_basic_execution]
 }
