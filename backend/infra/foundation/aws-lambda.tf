@@ -32,8 +32,10 @@ resource "aws_lambda_function" "api" {
   handler       = "bootstrap"
   architectures = ["x86_64"]
 
-  filename         = local.lambda_zip
-  source_code_hash = filebase64sha256(local.lambda_zip)
+  filename = local.lambda_zip
+  # The deploy workflow builds the zip before applying; `terraform validate` (CI, no build) tolerates
+  # its absence, and every real plan/apply computes the true hash so a rebuilt binary redeploys.
+  source_code_hash = fileexists(local.lambda_zip) ? filebase64sha256(local.lambda_zip) : null
 
   # A GraalVM-native cold start runs in a few hundred milliseconds, so modest memory (which also sets
   # the vCPU share) and a short timeout are ample. The counter is held in memory for now, so no DB
