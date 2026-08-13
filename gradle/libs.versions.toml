@@ -53,6 +53,8 @@ sqldelight-postgresql-dialect = { module = "app.cash.sqldelight:postgresql-diale
 
 [plugins]
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
+fabrikt = { id = "ch.acanda.gradle.fabrikt", version = "1.39.1" }
+graalvm-native = { id = "org.graalvm.buildtools.native", version = "0.10.6" }
 jib = { id = "com.google.cloud.tools.jib", version.ref = "jib" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
