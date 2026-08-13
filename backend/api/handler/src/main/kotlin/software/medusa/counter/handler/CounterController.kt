@@ -2,25 +2,22 @@ package software.medusa.counter.handler
 
 import io.micronaut.http.HttpResponse
 import io.micronaut.http.annotation.Controller
-import java.util.concurrent.atomic.AtomicLong
 import software.medusa.counter.api.controllers.CounterDecrementController
 import software.medusa.counter.api.controllers.CounterGetController
 import software.medusa.counter.api.controllers.CounterIncrementController
 import software.medusa.counter.api.models.CountReply
 
-// A single shared counter, held in memory. Persistence (Neon Postgres) is a later slice; until then
-// the value resets when Lambda recycles the execution environment. The route metadata (paths,
-// verbs) is inherited from the generated controller interfaces.
+// Route metadata (paths, verbs) comes from the generated interfaces; the value lives in the
+// injected store (Neon Postgres in the deployed function).
 @Controller
-open class CounterController :
+open class CounterController(private val store: CounterStore) :
     CounterGetController, CounterIncrementController, CounterDecrementController {
-  private val count = AtomicLong(0)
 
-  override fun getCount(): HttpResponse<CountReply> = HttpResponse.ok(CountReply(count.get()))
+  override fun getCount(): HttpResponse<CountReply> = HttpResponse.ok(CountReply(store.current()))
 
   override fun incrementCount(): HttpResponse<CountReply> =
-      HttpResponse.ok(CountReply(count.incrementAndGet()))
+      HttpResponse.ok(CountReply(store.increment()))
 
   override fun decrementCount(): HttpResponse<CountReply> =
-      HttpResponse.ok(CountReply(count.decrementAndGet()))
+      HttpResponse.ok(CountReply(store.decrement()))
 }
