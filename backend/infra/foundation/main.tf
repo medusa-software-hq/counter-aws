@@ -37,21 +37,14 @@ variable "neon_api_key" {
   sensitive   = true
 }
 
-# Neon provider for serverless Postgres provisioning
+# The counter is in-memory for now, so no Neon resources exist in this configuration. The provider is
+# retained so Terraform can destroy the previously-provisioned project on apply, and because a later
+# slice re-introduces Postgres-backed persistence.
 provider "neon" {
   api_key = var.neon_api_key
 }
 
 provider "aws" {
   region = module.common.aws_primary_location
-}
-
-# The container image tag to deploy (a git SHA). The deploy workflow builds and
-# pushes that tag to ECR before applying, so the Lambda always points at a real
-# image.
-variable "image_tag" {
-  description = "ECR image tag for the API Lambda (a git SHA)."
-  type        = string
-  default     = "bootstrap"
 }
 

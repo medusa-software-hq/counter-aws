@@ -70,7 +70,7 @@ resource "aws_cloudfront_origin_access_control" "api" {
   signing_protocol                  = "sigv4"
 }
 
-# The SPA calls same-origin "/api/...", but the gRPC service is mounted at the
+# The SPA calls same-origin "/api/...", but the API's operation paths are mounted at the
 # root — strip the "/api" prefix before the request reaches the function URL.
 resource "aws_cloudfront_function" "strip_api_prefix" {
   name    = "${module.common.aws_resource_prefix}-strip-api${module.common.resource_name_suffix}"
@@ -124,8 +124,8 @@ resource "aws_cloudfront_distribution" "spa" {
     cache_policy_id = "658327ea-f89d-4fab-a63d-7e88639e58f6"
   }
 
-  # The API: pass every method through to the Lambda, uncached. gRPC-Web bodies are
-  # POSTs that must not be buffered or cached.
+  # The API: pass every method through to the Lambda, uncached. The counter's writes are
+  # POSTs that must not be cached.
   ordered_cache_behavior {
     path_pattern           = "/api/*"
     target_origin_id       = "api-func-url"

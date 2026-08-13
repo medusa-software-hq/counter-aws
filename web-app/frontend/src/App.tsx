@@ -1,27 +1,12 @@
-import { createClient } from '@connectrpc/connect';
-import { createGrpcWebTransport } from '@connectrpc/connect-web';
 import { Box, Button, Group, SimpleGrid, Stack, Text, Title } from '@mantine/core';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { api } from './api.ts';
 import heroImg from './assets/hero.png';
 import reactLogo from './assets/react.svg';
 import viteLogo from './assets/vite.svg';
-import { CounterService } from './gen/medusa/counter/v1/counter_service_pb.ts';
 import { SignInWall } from './SignInWall.tsx';
 import { useAuth } from './useAuth.tsx';
 import classes from './App.module.css';
-
-const API_URL = import.meta.env.VITE_API_URL as string;
-
-if (!API_URL) {
-  throw new Error('VITE_API_URL is not set');
-}
-
-const transport = createGrpcWebTransport({
-  // VITE_API_URL is a same-origin path ("/api"); the transport needs an absolute URL.
-  baseUrl: new URL(API_URL, window.location.origin).toString(),
-});
-
-const client = createClient(CounterService, transport);
 
 const socialLinks = [
   { label: 'GitHub', href: 'https://github.com/vitejs/vite', icon: 'github-icon' },
@@ -37,30 +22,37 @@ function AppContent({ token }: { token: string }) {
 
   const headers = useMemo(() => ({ Authorization: `Bearer ${token}` }), [token]);
 
-  const handleError = useCallback(
-    (err: unknown) => {
-      const message = err instanceof Error ? err.message : String(err);
-      if (message.includes('401') || message.includes('unauthenticated')) {
+  // openapi-fetch returns HTTP errors (rather than throwing); only transport failures throw.
+  const apply = useCallback(
+    (value: number | undefined, isError: boolean, status: number) => {
+      if (status === 401) {
         handleUnauthorized();
+      } else if (isError || value === undefined) {
+        setError(`Failed to reach the API (${status})`);
       } else {
-        setError(message);
+        setCount(value);
+        setError(null);
       }
     },
     [handleUnauthorized]
   );
+
+  const handleThrown = useCallback((err: unknown) => {
+    setError(err instanceof Error ? err.message : String(err));
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
       try {
-        const response = await client.getCount({}, { headers });
+        const { data, error, response } = await api.GET('/counter/get', { headers });
         if (!cancelled) {
-          setCount(response.count);
+          apply(data?.count, error !== undefined, response.status);
         }
       } catch (err: unknown) {
         if (!cancelled) {
-          handleError(err);
+          handleThrown(err);
         }
       }
     }
@@ -69,25 +61,23 @@ function AppContent({ token }: { token: string }) {
     return () => {
       cancelled = true;
     };
-  }, [headers, handleError]);
+  }, [headers, apply, handleThrown]);
 
   async function increment() {
     try {
-      const response = await client.increment({}, { headers });
-      setCount(response.count);
-      setError(null);
+      const { data, error, response } = await api.POST('/counter/increment', { headers });
+      apply(data?.count, error !== undefined, response.status);
     } catch (err: unknown) {
-      handleError(err);
+      handleThrown(err);
     }
   }
 
   async function decrement() {
     try {
-      const response = await client.decrement({}, { headers });
-      setCount(response.count);
-      setError(null);
+      const { data, error, response } = await api.POST('/counter/decrement', { headers });
+      apply(data?.count, error !== undefined, response.status);
     } catch (err: unknown) {
-      handleError(err);
+      handleThrown(err);
     }
   }
 

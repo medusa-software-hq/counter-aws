@@ -33,7 +33,7 @@ class EnvironmentTest {
   fun `local requires config path and a valid port`() {
     val env = Environment.current("local", "/tmp/x", "8081")
     assertTrue(env is Environment.Local)
-    assertEquals(ApiEndpoint("127.0.0.1", 8081, useTls = false), env.apiEndpoint)
+    assertEquals(ApiEndpoint("http://127.0.0.1:8081"), env.apiEndpoint)
     assertFailsWith<EnvironmentSelectionException> { Environment.current("local", null, "8081") }
     assertFailsWith<EnvironmentSelectionException> { Environment.current("local", "/tmp/x", null) }
     assertFailsWith<EnvironmentSelectionException> {

@@ -1,67 +1,69 @@
 package software.medusa.counter.cli.api
 
-import io.grpc.Grpc
-import io.grpc.InsecureChannelCredentials
-import io.grpc.ManagedChannel
-import io.grpc.Status
-import io.grpc.StatusRuntimeException
-import io.grpc.TlsChannelCredentials
-import java.util.concurrent.TimeUnit
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import okhttp3.OkHttpClient
+import software.medusa.counter.cli.api.gen.client.ApiClientException
+import software.medusa.counter.cli.api.gen.client.ApiException as GeneratedApiException
+import software.medusa.counter.cli.api.gen.client.ApiResponse
+import software.medusa.counter.cli.api.gen.client.CounterDecrementClient
+import software.medusa.counter.cli.api.gen.client.CounterGetClient
+import software.medusa.counter.cli.api.gen.client.CounterIncrementClient
+import software.medusa.counter.cli.api.gen.client.OAuth2
+import software.medusa.counter.cli.api.gen.models.CountReply
 import software.medusa.counter.cli.auth.TokenProvider
-import software.medusa.counter.v1.CounterServiceGrpc
-import software.medusa.counter.v1.CounterServiceGrpc.CounterServiceBlockingStub
-import software.medusa.counter.v1.DecrementRequest
-import software.medusa.counter.v1.GetCountRequest
-import software.medusa.counter.v1.IncrementRequest
 
 /**
- * Talks to CounterService over gRPC. A [BearerTokenInterceptor] — attached to the stub once — puts
- * the caller's bearer token (when one is configured) on every call, fetched via [tokenProvider] as
- * the call starts. [close] shuts the channel down — the CLI uses one client per command.
+ * Talks to CounterService over its generated OkHttp REST client. When [tokenProvider] yields a
+ * token it is attached as an `Authorization: Bearer` header on every request (the backend runs
+ * no-op auth for now, so a missing token is fine). The CLI uses one client per command.
  */
 class CounterApiClient(endpoint: ApiEndpoint, tokenProvider: TokenProvider) : AutoCloseable {
-  private val channel: ManagedChannel = channelFor(endpoint)
-  private val stub: CounterServiceBlockingStub =
-      CounterServiceGrpc.newBlockingStub(channel)
-          .withInterceptors(BearerTokenInterceptor(tokenProvider))
+  private val httpClient: OkHttpClient =
+      OkHttpClient.Builder()
+          .apply { tokenProvider.provideToken()?.let { token -> addInterceptor(OAuth2 { token }) } }
+          .build()
 
-  fun getCount(): Int = call { stub.getCount(GetCountRequest.getDefaultInstance()).count }
+  private val objectMapper: ObjectMapper = ObjectMapper().registerKotlinModule()
 
-  fun increment(): Int = call { stub.increment(IncrementRequest.getDefaultInstance()).count }
+  private val getClient = CounterGetClient(objectMapper, endpoint.baseUrl, httpClient)
+  private val incrementClient = CounterIncrementClient(objectMapper, endpoint.baseUrl, httpClient)
+  private val decrementClient = CounterDecrementClient(objectMapper, endpoint.baseUrl, httpClient)
 
-  fun decrement(): Int = call { stub.decrement(DecrementRequest.getDefaultInstance()).count }
+  fun getCount(): Long = call { getClient.getCount().body() }
+
+  fun increment(): Long = call { incrementClient.incrementCount().body() }
+
+  fun decrement(): Long = call { decrementClient.decrementCount().body() }
 
   private inline fun <T> call(block: () -> T): T =
       try {
         block()
-      } catch (e: StatusRuntimeException) {
+      } catch (e: GeneratedApiException) {
         throw asApiException(e)
       }
 
   override fun close() {
-    channel.shutdownNow()
-    channel.awaitTermination(SHUTDOWN_TIMEOUT_SEC, TimeUnit.SECONDS)
+    httpClient.dispatcher.executorService.shutdown()
+    httpClient.connectionPool.evictAll()
   }
 
   companion object {
-    private const val SHUTDOWN_TIMEOUT_SEC = 5L
-
-    private fun channelFor(endpoint: ApiEndpoint): ManagedChannel {
-      val credentials =
-          if (endpoint.useTls) TlsChannelCredentials.create()
-          else InsecureChannelCredentials.create()
-      return Grpc.newChannelBuilderForAddress(endpoint.host, endpoint.port, credentials).build()
+    private fun asApiException(e: GeneratedApiException): ApiException {
+      val status = (e as? ApiClientException)?.statusCode
+      return when (status) {
+        401,
+        403 ->
+            ApiException(
+                "The API rejected your identity ($status). Your session may have lapsed, or your " +
+                    "account isn't allowed — try 'ms-counter login' again."
+            )
+        else -> ApiException("API error: ${e.message}")
+      }
     }
-
-    private fun asApiException(e: StatusRuntimeException): ApiException =
-        when (e.status.code) {
-          Status.Code.UNAUTHENTICATED,
-          Status.Code.PERMISSION_DENIED ->
-              ApiException(
-                  "The API rejected your identity (${e.status.code}). Your session may have lapsed, " +
-                      "or your account isn't allowed — try 'ms-counter login' again."
-              )
-          else -> ApiException("API error (${e.status.code}): ${e.status.description ?: e.message}")
-        }
   }
 }
+
+/** The generated call returns an ApiResponse whose body is present on success. */
+private fun ApiResponse<CountReply>.body(): Long =
+    data?.count ?: throw ApiException("API returned an empty response.")

@@ -1,0 +1,82 @@
+openapi: 3.0.3
+info:
+  title: Counter API
+  version: 1.0.0
+  description: >-
+    A single shared counter. RPC-style over HTTP: each operation is its own path,
+    JSON in/out. The transport is plain HTTP/1.1 request-response so it runs as a
+    stateless Lambda handler.
+
+servers:
+  - url: /api
+
+security:
+  - bearerAuth: []
+
+paths:
+  /counter/get:
+    get:
+      operationId: getCount
+      summary: Read the current count.
+      responses:
+        "200":
+          description: The current count.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CountReply" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /counter/increment:
+    post:
+      operationId: incrementCount
+      summary: Add one and return the new count.
+      responses:
+        "200":
+          description: The count after incrementing.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CountReply" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /counter/decrement:
+    post:
+      operationId: decrementCount
+      summary: Subtract one and return the new count.
+      responses:
+        "200":
+          description: The count after decrementing.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CountReply" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid bearer token.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    CountReply:
+      type: object
+      required: [count]
+      properties:
+        count:
+          type: integer
+          format: int64
+          description: The counter's value.
+
+    Error:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
