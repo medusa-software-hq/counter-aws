@@ -106,13 +106,16 @@ resource "aws_iam_role_policy" "cicd" {
       {
         # Apply the API foundation from CI: manage this variant's API Gateway HTTP API. Creating an
         # API is apigateway:POST on the collection ARN (/apis); everything else (routes, integration,
-        # authorizer, stage, tags) lives under the API's own ARN (/apis/*).
+        # authorizer, stage, tags) lives under the API's own ARN (/apis/*). The custom domain and its
+        # API mapping live under a separate collection (/domainnames).
         Sid    = "ApiGatewayManage"
         Effect = "Allow"
         Action = "apigateway:*"
         Resource = [
           "arn:aws:apigateway:${module.common.aws_primary_location}::/apis",
           "arn:aws:apigateway:${module.common.aws_primary_location}::/apis/*",
+          "arn:aws:apigateway:${module.common.aws_primary_location}::/domainnames",
+          "arn:aws:apigateway:${module.common.aws_primary_location}::/domainnames/*",
         ]
       },
       {

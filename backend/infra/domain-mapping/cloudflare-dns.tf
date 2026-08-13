@@ -1,4 +1,10 @@
-# The API's public DNS record is intentionally absent: it pointed at the removed
-# compute platform's domain mapping. The cloudflare provider (see main.tf) is
-# kept so the AWS-targeting record can be added here later, at which point its
-# zone id and host name are reintroduced alongside the record that consumes them.
+# Point the public API host at the regional API Gateway custom domain. Not proxied: API Gateway
+# terminates TLS with its own ACM certificate for this host, so Cloudflare must not sit in the path.
+resource "cloudflare_dns_record" "api" {
+  zone_id = var.cloudflare_zone_id
+  type    = "CNAME"
+  name    = module.common.api_subdomain_name
+  content = data.terraform_remote_state.api_foundation.outputs.api_domain_target
+  ttl     = 1 # "automatic"
+  proxied = false
+}
