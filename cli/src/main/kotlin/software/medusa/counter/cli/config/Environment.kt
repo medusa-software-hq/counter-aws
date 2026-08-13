@@ -34,7 +34,7 @@ sealed interface Environment {
 
   data object Prod : Environment {
     override val label = "prod"
-    override val apiEndpoint = ApiEndpoint("https://api.counter-baseline.medusa.software")
+    override val apiEndpoint = ApiEndpoint("https://${GeneratedEnvironments.prodApiHost}")
 
     override fun resolveConfigDirPath(baseConfigPath: Path): Path = baseConfigPath.resolve(label)
 
@@ -43,7 +43,7 @@ sealed interface Environment {
 
   data object Staging : Environment {
     override val label = "staging"
-    override val apiEndpoint = ApiEndpoint("https://api.counter-baseline-staging.medusa.software")
+    override val apiEndpoint = ApiEndpoint("https://${GeneratedEnvironments.stagingApiHost}")
 
     override fun resolveConfigDirPath(baseConfigPath: Path): Path = baseConfigPath.resolve(label)
 

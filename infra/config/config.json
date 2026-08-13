@@ -1,0 +1,19 @@
+{
+  "domain": "medusa.software",
+  "environments": {
+    "prod": {
+      "api_host": "api.counter-aws.medusa.software",
+      "gh_environment_name": "production",
+      "resource_name_suffix": "",
+      "web_host": "counter-aws.medusa.software"
+    },
+    "staging": {
+      "api_host": "api.counter-aws-staging.medusa.software",
+      "gh_environment_name": "staging",
+      "resource_name_suffix": "-staging",
+      "web_host": "counter-aws-staging.medusa.software"
+    }
+  },
+  "project": "counter",
+  "variant": "aws"
+}

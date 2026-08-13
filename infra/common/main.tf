@@ -10,35 +10,24 @@ locals {
   # from staging across every root that imports this module.
   environment = terraform.workspace == "default" ? "prod" : terraform.workspace
 
-  # Per-environment values. Everything *outside* this map is shared across
-  # environments (same org, repo, domain, …);
-  # only what genuinely differs per environment lives here. `default`/prod
-  # resolves to exactly the values used before this split, so introducing the
-  # workspace dimension is a no-op on the prod state.
-  environment_config = {
-    prod = {
-      # The GitHub deployment Environment holding this environment's Actions
-      # variables (see .github/config). Note prod's is "production", not "prod".
-      gh_environment_name = "production"
+  # The deployment values that must stay identical between Terraform and the built artifacts (the
+  # CLI) live once in infra/config and are read here from its emitted config.json, so neither side
+  # can hardcode them independently and drift. Everything outside config.json is either shared across
+  # environments (org, repo, AWS account, …) or derived below.
+  config              = jsondecode(file("${path.module}/../config/config.json"))
+  selected_env_config = local.config.environments[local.environment]
 
-      # DNS/Neon-safe suffix appended to derived resource names (web/API
-      # subdomain, Neon project). Empty for prod so its subdomain and Neon
-      # project keep their pre-split names.
-      resource_name_suffix = ""
-    }
-    staging = {
-      gh_environment_name  = "staging"
-      resource_name_suffix = "-staging"
-    }
-  }
-  selected_environment = local.environment_config[local.environment]
+  project_base_name   = local.config.project
+  project_variant     = local.config.variant
+  organization_domain = local.config.domain
 
-  organization_domain = "medusa.software"
+  gh_environment_name  = local.selected_env_config.gh_environment_name
+  resource_name_suffix = local.selected_env_config.resource_name_suffix
 
   # The GitHub org + repo that holds the code and runs CI/CD — the SAME for
   # every environment (one repo, one Actions pipeline), so a flavor constant,
-  # NOT part of environment_config. Used for the `github` provider owner and
-  # Terraform state prefixes.
+  # NOT part of the per-environment config. Used for the `github` provider owner
+  # and Terraform state prefixes.
   gh_organization_name   = "medusa-software-hq"
   gh_repo_name           = "counter-aws"
   gh_api_url_var_name    = "API_URL"
@@ -52,9 +41,6 @@ locals {
   # 🎨 TEMPLATE POST-EJECT: Create a GitHub App and change its client id here 👇
   gh_releases_client_id = "Iv23ct4SGbvxYw9pxJs8" # "Medusa Counter Releaser"
 
-  project_base_name = "counter" # 🎨 TEMPLATE EJECT: Choose an org-unique project base name
-  project_variant   = "aws"     # 🎨 TEMPLATE EJECT: Choose a project-unique variant name
-
   aws_primary_location = "eu-central-1"
   aws_account_id       = "682544514886"
 
@@ -66,26 +52,22 @@ locals {
   # Prefix for this variant's AWS resources, e.g. counter-aws-github-actions.
   aws_resource_prefix = "${local.project_base_name}-${local.project_variant}"
 
-  gh_environment_name  = local.selected_environment.gh_environment_name
-  resource_name_suffix = local.selected_environment.resource_name_suffix
-
   # Subdomain under organization_domain — per environment (the suffix is empty
-  # for prod). The web app is published at `<subdomain_label>.<domain>` and the
-  # API at `api.<subdomain_label>.<domain>`; staging gets its own subdomain for
-  # free.
+  # for prod). Used to name this variant's per-environment resources; the public
+  # hosts themselves come straight from config.json (below).
   subdomain_label = "${local.project_base_name}-${local.project_variant}${local.resource_name_suffix}"
 
-  # The API's public host, defined once: the domain mapping publishes it (DNS
-  # record) and CI/CD hands it to the web build as VITE_API_URL. Two definitions
-  # of the same string would silently drift the moment the subdomain changed.
+  # The API's public host, from config.json: the domain mapping publishes it (DNS
+  # record) and CI/CD hands it to the web build as VITE_API_URL. Sourcing it from
+  # the single config keeps those uses from drifting from the deployed subdomain.
   api_subdomain_name = "api.${local.subdomain_label}"
-  api_host_name      = "${local.api_subdomain_name}.${local.organization_domain}"
+  api_host_name      = local.selected_env_config.api_host
   api_url            = "https://${local.api_host_name}"
 
   # The web app's public host — the SPA is served here (CloudFront + ACM), and
   # the domain mapping points its DNS record at the distribution.
   web_subdomain_name = local.subdomain_label
-  web_host_name      = "${local.web_subdomain_name}.${local.organization_domain}"
+  web_host_name      = local.selected_env_config.web_host
 }
 
 output "organization_domain" {
