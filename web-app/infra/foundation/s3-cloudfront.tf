@@ -8,9 +8,10 @@ locals {
   # via the suffix; the account id keeps it unique across accounts.
   spa_bucket_name = "${module.common.aws_resource_prefix}-web${module.common.resource_name_suffix}-${module.common.aws_account_id}"
 
-  # The Lambda function URL, as a bare host for a CloudFront origin (no scheme, no
-  # trailing slash).
-  api_origin_host = replace(trimsuffix(data.terraform_remote_state.api.outputs.api_function_url, "/"), "https://", "")
+  # The API Gateway endpoint, as a bare host for a CloudFront origin (no scheme). The `try` reads the
+  # new output but falls back to the old function-URL output during the cross-state transition, so
+  # this foundation never fails if it applies before the API foundation republishes.
+  api_origin_host = replace(trimsuffix(try(data.terraform_remote_state.api.outputs.api_endpoint, data.terraform_remote_state.api.outputs.api_function_url), "/"), "https://", "")
 }
 
 # The API lives in its own Terraform state; read its function URL from there.
@@ -62,14 +63,6 @@ resource "aws_cloudfront_origin_access_control" "spa" {
   signing_protocol                  = "sigv4"
 }
 
-# CloudFront signs requests to the IAM-authorized function URL with SigV4.
-resource "aws_cloudfront_origin_access_control" "api" {
-  name                              = "${module.common.aws_resource_prefix}-api${module.common.resource_name_suffix}"
-  origin_access_control_origin_type = "lambda"
-  signing_behavior                  = "always"
-  signing_protocol                  = "sigv4"
-}
-
 # The SPA calls same-origin "/api/...", but the API's operation paths are mounted at the
 # root — strip the "/api" prefix before the request reaches the function URL.
 resource "aws_cloudfront_function" "strip_api_prefix" {
@@ -101,10 +94,12 @@ resource "aws_cloudfront_distribution" "spa" {
     origin_access_control_id = aws_cloudfront_origin_access_control.spa.id
   }
 
+  # The API Gateway HTTP API endpoint. It's a public endpoint (a Cognito JWT authorizer is the gate,
+  # in a later slice), so no Origin Access Control — the viewer's Authorization header is forwarded
+  # for the authorizer via the origin request policy below.
   origin {
-    origin_id                = "api-func-url"
-    domain_name              = local.api_origin_host
-    origin_access_control_id = aws_cloudfront_origin_access_control.api.id
+    origin_id   = "api-func-url"
+    domain_name = local.api_origin_host
 
     custom_origin_config {
       http_port              = 80

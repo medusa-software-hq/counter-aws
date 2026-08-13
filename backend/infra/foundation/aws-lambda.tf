@@ -46,29 +46,49 @@ resource "aws_lambda_function" "api" {
   depends_on = [aws_iam_role_policy_attachment.api_basic_execution]
 }
 
-# IAM-authorized: the only caller is this account's CloudFront distribution, which signs requests via
-# an Origin Access Control (see the web foundation). No public unsigned access.
-resource "aws_lambda_function_url" "api" {
-  function_name      = aws_lambda_function.api.function_name
-  authorization_type = "AWS_IAM"
+# The API is fronted by an API Gateway HTTP API: a Lambda-proxy integration with payload format 2.0,
+# so the function receives the same APIGatewayV2HTTPEvent it did from the function URL — no handler
+# change. Access control (a Cognito JWT authorizer) lands in a later slice; for now every route is
+# open. CloudFront points its /api behavior at this endpoint (see the web foundation).
+resource "aws_apigatewayv2_api" "api" {
+  name          = "${module.common.aws_resource_prefix}-api${module.common.resource_name_suffix}"
+  protocol_type = "HTTP"
 }
 
-# Let CloudFront (OAC) invoke the function URL. Scoped to any distribution in this account by
-# wildcard SourceArn, which avoids a circular dependency on the distribution id that lives in the
-# web foundation's separate state.
-resource "aws_lambda_permission" "cloudfront_invoke_url" {
-  statement_id           = "AllowCloudFrontInvokeFunctionUrl"
-  action                 = "lambda:InvokeFunctionUrl"
-  function_name          = aws_lambda_function.api.function_name
-  principal              = "cloudfront.amazonaws.com"
-  function_url_auth_type = "AWS_IAM"
-  source_arn             = "arn:aws:cloudfront::${module.common.aws_account_id}:distribution/*"
+resource "aws_apigatewayv2_integration" "lambda" {
+  api_id                 = aws_apigatewayv2_api.api.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.api.invoke_arn
+  payload_format_version = "2.0"
+}
+
+# A catch-all route: the Micronaut router in the function owns the actual paths (/counter/*).
+resource "aws_apigatewayv2_route" "default" {
+  api_id    = aws_apigatewayv2_api.api.id
+  route_key = "$default"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+resource "aws_apigatewayv2_stage" "default" {
+  api_id      = aws_apigatewayv2_api.api.id
+  name        = "$default"
+  auto_deploy = true
+}
+
+resource "aws_lambda_permission" "apigw_invoke" {
+  statement_id  = "AllowApiGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.api.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.api.execution_arn}/*/*"
 }
 
 output "api_function_name" {
   value = aws_lambda_function.api.function_name
 }
 
-output "api_function_url" {
-  value = aws_lambda_function_url.api.function_url
+# The HTTP API's invoke endpoint (https://<id>.execute-api.<region>.amazonaws.com), consumed by the
+# web foundation as the CloudFront /api origin.
+output "api_endpoint" {
+  value = aws_apigatewayv2_api.api.api_endpoint
 }
