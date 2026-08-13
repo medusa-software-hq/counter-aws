@@ -9,7 +9,7 @@ Basic Single-Page Application connecting to the API.
 - [oxlint](https://oxc.rs/docs/guide/usage/linter) + [oxfmt](https://oxc.rs/) for linting and formatting; [Stylelint](https://stylelint.io/) for CSS
 - [Vitest](https://vitest.dev/) + [Testing Library](https://testing-library.com/) for tests
 - [Yarn 4](https://yarnpkg.com/) for package management
-- gRPC/Connect client generated from `proto/` via [buf](https://buf.build/)
+- REST client generated from the OpenAPI contract (`backend/api/openapi/counter.yaml`) via [openapi-typescript](https://openapi-ts.dev/) + [openapi-fetch](https://openapi-ts.dev/openapi-fetch/)
 
 All tasks are exposed through the package `Taskfile.yml` (`task lint`, `task test`,
 `task build`, `task dev`, …).

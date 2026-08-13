@@ -24,8 +24,6 @@ jobs:
     env:
       AWS_REGION: eu-central-1
       AWS_ROLE_ARN: arn:aws:iam::682544514886:role/counter-aws-github-actions
-      ECR_REPOSITORY: 682544514886.dkr.ecr.eu-central-1.amazonaws.com/counter-aws-api
-      LWA_IMAGE: public.ecr.aws/awsguru/aws-lambda-adapter:0.9.1
       JAVA_VERSION: "21"
       TERRAFORM_VERSION: 1.14
 
@@ -38,9 +36,6 @@ jobs:
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Log in to ECR
-        uses: aws-actions/amazon-ecr-login@v2
-
       - uses: actions/setup-java@v4
         with:
           java-version: ${{ env.JAVA_VERSION }}
@@ -48,24 +43,10 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Fetch the Lambda Web Adapter
-        # Extract the adapter binary from the official image into jib's extra
-        # directory, so the built image carries it at /opt/extensions/.
-        run: |
-          # The adapter image is FROM scratch (no CMD), so `docker create` needs
-          # a command arg — it is never run, just enough to `docker cp` out of.
-          docker create --name lwa "$LWA_IMAGE" /lambda-adapter
-          mkdir -p backend/api/cloud/src/main/jib/opt/extensions
-          docker cp lwa:/lambda-adapter backend/api/cloud/src/main/jib/opt/extensions/lambda-adapter
-          docker rm lwa
-
-      - name: Build & push image
-        # Push before applying: a container Lambda's image must exist in ECR
-        # before the function can be created.
-        run: |
-          ./gradlew :backend:api:cloud:jib \
-            -Pjib.imageRef="$ECR_REPOSITORY" \
-            -Pjib.imageTag="$GITHUB_SHA"
+      - name: Build the native custom-runtime zip
+        # GraalVM native-image is cross-built in Docker (available on the runner) and packaged as a
+        # provided.al2023 `bootstrap` zip that Terraform uploads directly.
+        run: ./gradlew :backend:api:handler:buildNativeLambda
 
       - uses: hashicorp/setup-terraform@v4
         with:
@@ -75,7 +56,6 @@ jobs:
         working-directory: backend/infra/foundation
         env:
           TF_VAR_neon_api_key: ${{ secrets.NEON_API_KEY }}
-          TF_VAR_image_tag: ${{ github.sha }}
         run: |
           terraform init -input=false
           terraform apply -auto-approve -input=false

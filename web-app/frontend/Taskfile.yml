@@ -14,15 +14,15 @@ tasks:
       # Using `--immutable` ensures a clean install based on the lockfile
       - yarn install --immutable
 
-  proto:
-    desc: Generate code from protobuf definitions
+  openapi:
+    desc: Generate the API client types from the OpenAPI contract
     deps: [install]
     sources:
-      - ../../proto/**/*.proto
+      - ../../backend/api/openapi/counter.yaml
     generates:
-      - src/gen/**/*.ts
+      - src/gen/api.ts
     cmds:
-      - buf generate
+      - npx openapi-typescript ../../backend/api/openapi/counter.yaml -o src/gen/api.ts
 
   fmt:check:
     desc: Check package formatting
@@ -38,20 +38,20 @@ tasks:
 
   lint:
     desc: Lint the package
-    deps: [install, proto]
+    deps: [install, openapi]
     cmds:
       - npx oxlint
       - npx stylelint '**/*.css' --cache
 
   typecheck:
     desc: Type check the package
-    deps: [install, proto]
+    deps: [install, openapi]
     cmds:
       - npx tsc --noEmit
 
   test:
     desc: Run unit tests
-    deps: [install, proto]
+    deps: [install, openapi]
     cmds:
       - npx vitest run
 
@@ -62,13 +62,13 @@ tasks:
 
   build:
     desc: Build the package
-    deps: [install, typecheck, proto]
+    deps: [install, typecheck, openapi]
     cmds:
       - npx vite build
 
   dev:
     desc: Start dev server
-    deps: [install, proto]
+    deps: [install, openapi]
     env:
       VITE_API_URL: http://localhost:8081
     cmds:

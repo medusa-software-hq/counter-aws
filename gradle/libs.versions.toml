@@ -1,65 +1,32 @@
 [versions]
-armeria = "1.38.0"
-awssdk = "2.29.0"
 detekt = "1.23.8"
-flyway = "11.13.0"
-grpc = "1.80.0"
-grpc-kotlin = "1.5.0"
-hikari = "7.0.2"
-jib = "3.5.3"
-kotlin = "2.3.20"
-kotlin-coroutines = "1.10.2"
+jackson = "2.18.2"
+kotlin = "2.3.21"
 kotlinx-serialization = "1.9.0"
+ksp = "2.3.7"
 ktfmt = "0.26.0"
 logback = "1.5.32"
-nimbus-jose-jwt = "10.9"
-nimbus-oauth2-oidc-sdk = "11.38.2"
-postgresql = "42.7.8"
-protobuf = "4.34.1"
-protobuf-plugin = "0.10.0"
+micronaut-plugin = "4.6.2"
+okhttp = "4.12.0"
 shadow = "9.4.2"
-sqldelight = "2.3.2"
 versionCatalogUpdate = "1.1.0"
 
 [libraries]
-armeria-bom = { module = "com.linecorp.armeria:armeria-bom", version.ref = "armeria" }
-awssdk-secretsmanager = { module = "software.amazon.awssdk:secretsmanager", version.ref = "awssdk" }
-armeria-grpc = { module = "com.linecorp.armeria:armeria-grpc", version.ref = "armeria" }
-armeria-grpc-kotlin = { module = "com.linecorp.armeria:armeria-grpc-kotlin", version.ref = "armeria" }
-armeria-kotlin = { module = "com.linecorp.armeria:armeria-kotlin", version.ref = "armeria" }
 clikt = "com.github.ajalt.clikt:clikt-jvm:5.1.0"
-flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
-flyway-database-postgresql = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }
-grpc-bom = { module = "io.grpc:grpc-bom", version.ref = "grpc" }
-grpc-kotlin-stub = { module = "io.grpc:grpc-kotlin-stub", version.ref = "grpc-kotlin" }
-grpc-okhttp = { module = "io.grpc:grpc-okhttp", version.ref = "grpc" }
-grpc-protobuf = { module = "io.grpc:grpc-protobuf", version.ref = "grpc" }
-grpc-stub = { module = "io.grpc:grpc-stub", version.ref = "grpc" }
-hikaricp = { module = "com.zaxxer:HikariCP", version.ref = "hikari" }
+jackson-module-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin", version.ref = "jackson" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
-kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlin-coroutines" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
-nimbus-jose-jwt = { module = "com.nimbusds:nimbus-jose-jwt", version.ref = "nimbus-jose-jwt" }
-nimbus-oauth2-oidc-sdk = { module = "com.nimbusds:oauth2-oidc-sdk", version.ref = "nimbus-oauth2-oidc-sdk" }
-postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
-protobuf-java = { module = "com.google.protobuf:protobuf-java", version.ref = "protobuf" }
-protobuf-kotlin = { module = "com.google.protobuf:protobuf-kotlin", version.ref = "protobuf" }
-protobuf-protoc = { module = "com.google.protobuf:protoc", version.ref = "protobuf" }
-protobuf-protocGen-grpc-java = { module = "io.grpc:protoc-gen-grpc-java", version.ref = "grpc" }
-protobuf-protocGen-grpc-kotlin = "io.grpc:protoc-gen-grpc-kotlin:1.5.0"
-sqldelight-jdbc-driver = { module = "app.cash.sqldelight:jdbc-driver", version.ref = "sqldelight" }
-sqldelight-postgresql-dialect = { module = "app.cash.sqldelight:postgresql-dialect", version.ref = "sqldelight" }
+okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 
 [plugins]
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
-fabrikt = { id = "ch.acanda.gradle.fabrikt", version = "1.39.1" }
-graalvm-native = { id = "org.graalvm.buildtools.native", version = "0.10.6" }
-jib = { id = "com.google.cloud.tools.jib", version.ref = "jib" }
+kotlin-allopen = { id = "org.jetbrains.kotlin.plugin.allopen", version.ref = "kotlin" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 ktfmt = { id = "com.ncorti.ktfmt.gradle", version.ref = "ktfmt" }
-protobuf = { id = "com.google.protobuf", version.ref = "protobuf-plugin" }
+micronaut-application = { id = "io.micronaut.application", version.ref = "micronaut-plugin" }
+micronaut-aot = { id = "io.micronaut.aot", version.ref = "micronaut-plugin" }
 shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
-sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
 versionCatalogUpdate = { id = "nl.littlerobots.version-catalog-update", version.ref = "versionCatalogUpdate" }

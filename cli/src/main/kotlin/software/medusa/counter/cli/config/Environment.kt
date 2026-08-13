@@ -34,8 +34,7 @@ sealed interface Environment {
 
   data object Prod : Environment {
     override val label = "prod"
-    override val apiEndpoint =
-        ApiEndpoint("api.counter-baseline.medusa.software", 443, useTls = true)
+    override val apiEndpoint = ApiEndpoint("https://api.counter-baseline.medusa.software")
 
     override fun resolveConfigDirPath(baseConfigPath: Path): Path = baseConfigPath.resolve(label)
 
@@ -44,8 +43,7 @@ sealed interface Environment {
 
   data object Staging : Environment {
     override val label = "staging"
-    override val apiEndpoint =
-        ApiEndpoint("api.counter-baseline-staging.medusa.software", 443, useTls = true)
+    override val apiEndpoint = ApiEndpoint("https://api.counter-baseline-staging.medusa.software")
 
     override fun resolveConfigDirPath(baseConfigPath: Path): Path = baseConfigPath.resolve(label)
 
@@ -62,7 +60,7 @@ sealed interface Environment {
     }
 
     override val label = LABEL
-    override val apiEndpoint = ApiEndpoint("127.0.0.1", port, useTls = false)
+    override val apiEndpoint = ApiEndpoint("http://127.0.0.1:$port")
 
     override val marker = "[local]"
 
