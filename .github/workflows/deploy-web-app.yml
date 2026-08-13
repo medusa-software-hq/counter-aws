@@ -56,6 +56,10 @@ jobs:
         env:
           # Same-origin: the SPA calls its own host under /api (see file header).
           VITE_API_URL: /api
+          # Cognito login: authority is the user-pool issuer (OIDC discovery finds the Hosted UI);
+          # the client id is the SPA app client whose id the API Gateway authorizer also requires.
+          VITE_COGNITO_AUTHORITY: ${{ vars.COGNITO_ISSUER_URL }}
+          VITE_COGNITO_CLIENT_ID: ${{ vars.COGNITO_SPA_CLIENT_ID }}
         # Install first, on its own: `task build` runs install/openapi/typecheck as
         # parallel deps, and on a cold node_modules the concurrent yarn processes
         # race and corrupt the install. A single install up front warms it.

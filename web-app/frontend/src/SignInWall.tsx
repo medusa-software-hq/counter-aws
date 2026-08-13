@@ -1,13 +1,18 @@
-import { Center, Stack, Text, Title } from '@mantine/core';
+import { Button, Center, Stack, Text, Title } from '@mantine/core';
+import { useAuth } from './useAuth.tsx';
 
-// Google Sign-In was removed for the AWS port (#121). Auth is a dev pass-through
-// for now, so this wall is not reached; kept as a placeholder until Cognito lands.
+// Shown when no valid session exists; the button starts the Cognito authorization-code (PKCE) flow.
 export function SignInWall() {
+  const { signIn } = useAuth();
+
   return (
     <Center mih="100svh">
       <Stack align="center" gap="md">
         <Title order={1}>Sign in</Title>
-        <Text c="dimmed">Sign-in is temporarily disabled.</Text>
+        <Text c="dimmed">Sign in with your organization account to use the counter.</Text>
+        <Button size="md" onClick={signIn}>
+          Sign in
+        </Button>
       </Stack>
     </Center>
   );

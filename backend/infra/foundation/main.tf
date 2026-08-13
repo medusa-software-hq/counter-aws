@@ -37,6 +37,16 @@ variable "neon_api_key" {
   sensitive   = true
 }
 
+variable "cognito_issuer_url" {
+  description = "Cognito user-pool issuer URL; the API Gateway JWT authorizer validates ID tokens against it."
+  type        = string
+}
+
+variable "cognito_spa_client_id" {
+  description = "Cognito SPA app-client id; the audience the JWT authorizer requires."
+  type        = string
+}
+
 # The counter is in-memory for now, so no Neon resources exist in this configuration. The provider is
 # retained so Terraform can destroy the previously-provisioned project on apply, and because a later
 # slice re-introduces Postgres-backed persistence.

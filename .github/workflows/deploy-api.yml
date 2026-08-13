@@ -56,6 +56,8 @@ jobs:
         working-directory: backend/infra/foundation
         env:
           TF_VAR_neon_api_key: ${{ secrets.NEON_API_KEY }}
+          TF_VAR_cognito_issuer_url: ${{ vars.COGNITO_ISSUER_URL }}
+          TF_VAR_cognito_spa_client_id: ${{ vars.COGNITO_SPA_CLIENT_ID }}
         run: |
           terraform init -input=false
           terraform apply -auto-approve -input=false

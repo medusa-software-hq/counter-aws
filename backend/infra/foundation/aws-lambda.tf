@@ -62,11 +62,29 @@ resource "aws_apigatewayv2_integration" "lambda" {
   payload_format_version = "2.0"
 }
 
-# A catch-all route: the Micronaut router in the function owns the actual paths (/counter/*).
+# Validates the caller's Cognito ID token natively — issuer (the user pool) and audience (the SPA
+# app client) — and rejects anything unsigned/expired/mismatched with 401 before the function runs.
+# This is the whole authentication story: the function does no token work.
+resource "aws_apigatewayv2_authorizer" "cognito" {
+  api_id           = aws_apigatewayv2_api.api.id
+  name             = "${module.common.aws_resource_prefix}-cognito${module.common.resource_name_suffix}"
+  authorizer_type  = "JWT"
+  identity_sources = ["$request.header.Authorization"]
+
+  jwt_configuration {
+    issuer   = var.cognito_issuer_url
+    audience = [var.cognito_spa_client_id]
+  }
+}
+
+# A catch-all route, gated by the JWT authorizer: the Micronaut router in the function owns the
+# actual paths (/counter/*).
 resource "aws_apigatewayv2_route" "default" {
-  api_id    = aws_apigatewayv2_api.api.id
-  route_key = "$default"
-  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  api_id             = aws_apigatewayv2_api.api.id
+  route_key          = "$default"
+  target             = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
 resource "aws_apigatewayv2_stage" "default" {
