@@ -104,6 +104,18 @@ resource "aws_iam_role_policy" "cicd" {
         Resource = "arn:aws:lambda:${module.common.aws_primary_location}:${module.common.aws_account_id}:function:${module.common.aws_resource_prefix}-*"
       },
       {
+        # Apply the API foundation from CI: manage this variant's API Gateway HTTP API. Creating an
+        # API is apigateway:POST on the collection ARN (/apis); everything else (routes, integration,
+        # authorizer, stage, tags) lives under the API's own ARN (/apis/*).
+        Sid    = "ApiGatewayManage"
+        Effect = "Allow"
+        Action = "apigateway:*"
+        Resource = [
+          "arn:aws:apigateway:${module.common.aws_primary_location}::/apis",
+          "arn:aws:apigateway:${module.common.aws_primary_location}::/apis/*",
+        ]
+      },
+      {
         # Manage the Lambda execution role and pass it to the Lambda service.
         Sid    = "LambdaRoleManage"
         Effect = "Allow"
