@@ -83,4 +83,42 @@ tasks.withType<com.ncorti.ktfmt.gradle.tasks.KtfmtBaseTask>().configureEach {
 
 tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach { exclude("**/generated/**") }
 
+// The per-environment backend host is generated from the resolved config in infra/config — the
+// single source shared with Terraform — so the CLI can't drift from the deployed environments.
+// Nothing is committed; it regenerates whenever the config changes.
+val environmentsConfigFile = rootProject.file("infra/config/config.json")
+val generatedEnvironmentsDir = layout.buildDirectory.dir("generated/environments/kotlin")
+
+val generateEnvironments by tasks.registering {
+  inputs.file(environmentsConfigFile)
+  outputs.dir(generatedEnvironmentsDir)
+  doLast {
+    @Suppress("UNCHECKED_CAST")
+    val config = groovy.json.JsonSlurper().parse(environmentsConfigFile) as Map<String, Any?>
+
+    @Suppress("UNCHECKED_CAST")
+    val environments = config["environments"] as Map<String, Map<String, Any?>>
+
+    fun apiHost(env: String): String =
+        environments[env]?.get("api_host")?.toString()
+            ?: error("config.json is missing environments.$env.api_host")
+
+    val content = buildString {
+      appendLine("// Generated from infra/config/config.json — do not edit.")
+      appendLine("package software.medusa.counter.cli.config")
+      appendLine()
+      appendLine("internal object GeneratedEnvironments {")
+      appendLine("  const val prodApiHost: String = \"${apiHost("prod")}\"")
+      appendLine("  const val stagingApiHost: String = \"${apiHost("staging")}\"")
+      appendLine("}")
+    }
+
+    val packageDir = generatedEnvironmentsDir.get().dir("software/medusa/counter/cli/config").asFile
+    packageDir.mkdirs()
+    packageDir.resolve("GeneratedEnvironments.kt").writeText(content)
+  }
+}
+
+kotlin.sourceSets.named("main") { kotlin.srcDir(generateEnvironments) }
+
 dependencies { fabrikt("com.cjbooms:fabrikt:23.0.0") }

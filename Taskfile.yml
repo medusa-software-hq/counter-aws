@@ -5,6 +5,10 @@ includes:
     taskfile: infra/Taskfile.yml
     dir: infra
 
+  config:
+    taskfile: infra/config/Taskfile.yml
+    dir: infra/config
+
   web-app:
     taskfile: web-app/Taskfile.yml
     dir: web-app
@@ -58,6 +62,7 @@ tasks:
     deps:
       - github:lint
       - infra:fmt:check
+      - config:fmt:check
       - web-app:fmt:check
       - web-app:infra:foundation:fmt:check
       - web-app:infra:domain-mapping:fmt:check
@@ -71,6 +76,7 @@ tasks:
     deps:
       - github:lint:fix
       - infra:fmt:fix
+      - config:fmt:fix
       - web-app:fmt:fix
       - web-app:infra:foundation:fmt:fix
       - web-app:infra:domain-mapping:fmt:fix
@@ -84,6 +90,7 @@ tasks:
     deps:
       - github:lint
       - infra:lint
+      - config:lint
       - web-app:lint
       - web-app:infra:foundation:lint
       - web-app:infra:domain-mapping:lint
@@ -96,6 +103,8 @@ tasks:
     desc: Analyze the entire codebase
     deps:
       - infra:validate
+      - config:validate
+      - config:check
       - web-app:analyze
       - web-app:infra:foundation:validate
       - web-app:infra:domain-mapping:validate
