@@ -6,6 +6,7 @@ on:
     paths:
       - "backend/api/**"
       - "backend/infra/foundation/**"
+      - "backend/infra/domain-mapping/**"
       - "gradle/**"
       - "settings.gradle.kts"
       - "build.gradle.kts"
@@ -58,6 +59,17 @@ jobs:
           TF_VAR_neon_api_key: ${{ secrets.NEON_API_KEY }}
           TF_VAR_cognito_issuer_url: ${{ vars.COGNITO_ISSUER_URL }}
           TF_VAR_cognito_spa_client_id: ${{ vars.COGNITO_SPA_CLIENT_ID }}
+          TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          TF_VAR_cloudflare_zone_id: ${{ vars.CLOUDFLARE_ZONE_ID }}
+        run: |
+          terraform init -input=false
+          terraform apply -auto-approve -input=false
+
+      - name: Apply the API domain mapping
+        working-directory: backend/infra/domain-mapping
+        env:
+          TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          TF_VAR_cloudflare_zone_id: ${{ vars.CLOUDFLARE_ZONE_ID }}
         run: |
           terraform init -input=false
           terraform apply -auto-approve -input=false
