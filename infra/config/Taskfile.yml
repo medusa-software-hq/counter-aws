@@ -1,0 +1,60 @@
+version: '3'
+
+.sources: &sources
+  - '**/*.tf'
+  - config.json
+
+tasks:
+  fmt:check:
+    desc: Check Terraform formatting
+    sources: *sources
+    cmds:
+      - terraform fmt -check -recursive
+
+  fmt:fix:
+    desc: Fix Terraform formatting
+    sources: *sources
+    cmds:
+      - terraform fmt -recursive
+
+  lint:
+    desc: Lint the Terraform sources
+    sources: *sources
+    cmds:
+      - tflint --recursive
+
+  init:
+    desc: Initialize the Terraform working directory (no backend — pure locals)
+    sources: *sources
+    cmds:
+      - terraform init -backend=false
+
+  validate:
+    desc: Validate the Terraform configuration
+    deps: [init]
+    sources: *sources
+    cmds:
+      - terraform validate
+
+  regenerate:
+    desc: Rewrite config.json from the locals in main.tf (the single source)
+    deps: [init]
+    sources:
+      - '**/*.tf'
+    generates:
+      - config.json
+    cmds:
+      # Write to a temp file first: the shell truncates the redirect target before
+      # terraform reads it, and the config re-reads it as it loads.
+      - echo 'jsonencode(local.config)' | terraform console -no-color | jq 'fromjson' > config.json.tmp
+      - mv config.json.tmp config.json
+
+  check:
+    desc: Fail if config.json is stale — re-emit it and diff against the committed copy
+    deps: [init]
+    cmds:
+      # Inline (not the regenerate task) so the emit always runs — the drift check
+      # must never be skipped by task's up-to-date fingerprinting.
+      - echo 'jsonencode(local.config)' | terraform console -no-color | jq 'fromjson' > config.json.tmp
+      - mv config.json.tmp config.json
+      - git diff --exit-code config.json
