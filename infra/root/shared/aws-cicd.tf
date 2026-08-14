@@ -5,21 +5,14 @@ data "aws_iam_openid_connect_provider" "github" {
 }
 
 locals {
-  # The CI/CD role + registry are account-level singletons for this variant, but
-  # this root runs per environment (workspace). Create them only in the prod
-  # (default) workspace so a staging apply doesn't collide on the shared names.
-  create_shared_aws = module.common.environment == "prod" ? 1 : 0
-
   aws_state_bucket_arn = "arn:aws:s3:::${module.common.aws_state_bucket_name}"
   # Counter's state lives under this prefix (and under env:/<workspace>/… for
-  # non-default workspaces).
+  # non-default workspaces of the env-matrix root).
   aws_state_prefix = "projects/${module.common.project_base_name}/${module.common.project_variant}"
 }
 
 # Role GitHub Actions assumes via OIDC to deploy this variant, scoped to the repo.
 resource "aws_iam_role" "cicd" {
-  count = local.create_shared_aws
-
   name = "${module.common.aws_resource_prefix}-github-actions"
 
   assume_role_policy = jsonencode({
@@ -49,10 +42,8 @@ resource "aws_iam_role" "cicd" {
 # in the shared bucket) and push container images. Service permissions (Lambda,
 # CloudFront, …) are added by the issues that introduce those services.
 resource "aws_iam_role_policy" "cicd" {
-  count = local.create_shared_aws
-
   name = "state-and-ecr"
-  role = aws_iam_role.cicd[0].id
+  role = aws_iam_role.cicd.id
 
   policy = jsonencode({
     Version = "2012-10-17"

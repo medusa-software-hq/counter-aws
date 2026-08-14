@@ -1,9 +1,6 @@
 # Container registry for the API image. One repository, shared across
-# environments (images are tagged per environment + commit); created only in the
-# prod workspace, like the CI/CD role.
+# environments (images are tagged per environment + commit).
 resource "aws_ecr_repository" "api" {
-  count = local.create_shared_aws
-
   name = "${module.common.aws_resource_prefix}-api"
 
   image_scanning_configuration {
@@ -14,9 +11,7 @@ resource "aws_ecr_repository" "api" {
 # Let the Lambda service pull the API image (required even in-account for
 # container Lambdas), scoped to this variant's functions.
 resource "aws_ecr_repository_policy" "api" {
-  count = local.create_shared_aws
-
-  repository = aws_ecr_repository.api[0].name
+  repository = aws_ecr_repository.api.name
 
   policy = jsonencode({
     Version = "2012-10-17"
