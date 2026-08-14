@@ -97,12 +97,3 @@ jobs:
             --cache-control "no-cache" --content-type "text/html"
           aws cloudfront create-invalidation \
             --distribution-id "$DISTRIBUTION_ID" --paths "/*"
-
-      - name: Apply the web domain mapping
-        working-directory: web-app/infra/domain-mapping
-        env:
-          TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          TF_VAR_cloudflare_zone_id: ${{ vars.CLOUDFLARE_ZONE_ID }}
-        run: |
-          terraform init -input=false
-          terraform apply -auto-approve -input=false
