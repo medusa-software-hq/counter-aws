@@ -19,8 +19,8 @@ jobs:
     name: Publish CLI fat jar
     runs-on: ubuntu-latest
 
-    # `environment: production` resolves vars.API_URL + the releases app id to the prod values, and
-    # the secrets to prod's. The published CLI targets prod; staging use is via COUNTER_API_URL.
+    # `environment: production` resolves the COGNITO_* vars + the releases app id to prod's values.
+    # The published CLI targets prod; staging is reachable via COUNTER_ENVIRONMENT=staging.
     environment: production
 
     steps:
@@ -36,18 +36,17 @@ jobs:
 
       - name: Build fat jar
         working-directory: cli
-        # Bake the per-environment OAuth client secrets into the jar (see Environment). They're
-        # non-confidential for a Desktop OAuth client, but kept out of source so GitHub's push
-        # protection doesn't fight us. Backend URLs + client ids are NOT baked — they're
-        # deterministic public source constants. The staging secret is optional: if unset it bakes
-        # empty, and `COUNTER_ENVIRONMENT=staging ms-counter login` reports that cleanly.
+        # Bake the Cognito issuer + CLI client id into the jar so the published CLI can sign in. They
+        # come from the per-environment COGNITO_* CI variables (the public values the SPA and the API
+        # authorizer also consume — no secret involved). The API host is not baked from here: it's
+        # author-derived and read from the committed config.json. Staging's vars aren't in this
+        # (production) environment, so they bake empty and `COUNTER_ENVIRONMENT=staging ms-counter
+        # login` reports that cleanly.
         env:
-          CLI_OAUTH_CLIENT_SECRET: ${{ secrets.COUNTER_CLI_OAUTH_CLIENT_SECRET }}
-          CLI_STAGING_OAUTH_CLIENT_SECRET: ${{ secrets.COUNTER_CLI_OAUTH_CLIENT_SECRET_STAGING }}
+          COGNITO_ISSUER_URL: ${{ vars.COGNITO_ISSUER_URL }}
+          COGNITO_CLI_CLIENT_ID: ${{ vars.COGNITO_CLI_CLIENT_ID }}
         run: |
-          ../gradlew :cli:shadowJar \
-            -PcliOauthClientSecret="$CLI_OAUTH_CLIENT_SECRET" \
-            -PcliStagingOauthClientSecret="$CLI_STAGING_OAUTH_CLIENT_SECRET"
+          ../gradlew :cli:shadowJar
           echo "JAR=$GITHUB_WORKSPACE/cli/build/libs/counter-cli.jar" >> $GITHUB_ENV
           echo "VERSION=0.0.${{ github.run_number }}" >> $GITHUB_ENV
 

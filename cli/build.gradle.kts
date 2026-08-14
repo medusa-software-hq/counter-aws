@@ -10,6 +10,10 @@ dependencies {
   implementation(libs.clikt)
   implementation(libs.kotlinx.serialization.json)
 
+  // OAuth 2.0 / OIDC for the Cognito sign-in (authorization code + PKCE, endpoint discovery). Don't
+  // hand-roll the protocol.
+  implementation("com.nimbusds:oauth2-oidc-sdk:11.21")
+
   // The API client is generated from the OpenAPI contract (Fabrikt, OkHttp target); it
   // (de)serializes
   // with Jackson.
@@ -89,8 +93,24 @@ tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach { exclude("**
 val environmentsConfigFile = rootProject.file("infra/config/config.json")
 val generatedEnvironmentsDir = layout.buildDirectory.dir("generated/environments/kotlin")
 
+// The API host is author-derived, so it comes from the committed config.json. The Cognito issuer +
+// client id are Cognito-generated (they only exist after root infra applies), so they're baked from
+// the per-environment CI variables at build time — the same COGNITO_* GitHub vars the SPA and the
+// API
+// authorizer consume. Unset (e.g. a local build, or staging without CI) → empty → login reports it.
+val cognitoValues =
+    mapOf(
+        "prodCognitoIssuer" to providers.environmentVariable("COGNITO_ISSUER_URL").orElse(""),
+        "prodCognitoClientId" to providers.environmentVariable("COGNITO_CLI_CLIENT_ID").orElse(""),
+        "stagingCognitoIssuer" to
+            providers.environmentVariable("COGNITO_ISSUER_URL_STAGING").orElse(""),
+        "stagingCognitoClientId" to
+            providers.environmentVariable("COGNITO_CLI_CLIENT_ID_STAGING").orElse(""),
+    )
+
 val generateEnvironments by tasks.registering {
   inputs.file(environmentsConfigFile)
+  cognitoValues.forEach { (name, value) -> inputs.property(name, value) }
   outputs.dir(generatedEnvironmentsDir)
   doLast {
     @Suppress("UNCHECKED_CAST")
@@ -104,12 +124,17 @@ val generateEnvironments by tasks.registering {
             ?: error("config.json is missing environments.$env.api_host")
 
     val content = buildString {
-      appendLine("// Generated from infra/config/config.json — do not edit.")
+      appendLine(
+          "// Generated from infra/config/config.json + the COGNITO_* CI variables — do not edit."
+      )
       appendLine("package software.medusa.counter.cli.config")
       appendLine()
       appendLine("internal object GeneratedEnvironments {")
       appendLine("  const val prodApiHost: String = \"${apiHost("prod")}\"")
       appendLine("  const val stagingApiHost: String = \"${apiHost("staging")}\"")
+      cognitoValues.forEach { (name, value) ->
+        appendLine("  const val $name: String = \"${value.get()}\"")
+      }
       appendLine("}")
     }
 
