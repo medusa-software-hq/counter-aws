@@ -29,12 +29,25 @@ sealed interface Environment {
   /** The one backend endpoint for this environment. */
   val apiEndpoint: ApiEndpoint
 
+  /**
+   * How to sign in against this environment's Cognito, or null when it wasn't baked into the build.
+   * Only builds published with the per-environment Cognito CI variables can log in (see
+   * GeneratedEnvironments); otherwise `login` reports it cleanly and API calls fall back to the
+   * COUNTER_DEV_TOKEN override.
+   */
+  val cognito: CognitoConfig?
+
   /** The one-line stderr banner a non-prod session prints so a human can't mix environments. */
   val marker: String?
 
   data object Prod : Environment {
     override val label = "prod"
     override val apiEndpoint = ApiEndpoint("https://${GeneratedEnvironments.prodApiHost}")
+    override val cognito =
+        cognitoOrNull(
+            GeneratedEnvironments.prodCognitoIssuer,
+            GeneratedEnvironments.prodCognitoClientId,
+        )
 
     override fun resolveConfigDirPath(baseConfigPath: Path): Path = baseConfigPath.resolve(label)
 
@@ -44,6 +57,11 @@ sealed interface Environment {
   data object Staging : Environment {
     override val label = "staging"
     override val apiEndpoint = ApiEndpoint("https://${GeneratedEnvironments.stagingApiHost}")
+    override val cognito =
+        cognitoOrNull(
+            GeneratedEnvironments.stagingCognitoIssuer,
+            GeneratedEnvironments.stagingCognitoClientId,
+        )
 
     override fun resolveConfigDirPath(baseConfigPath: Path): Path = baseConfigPath.resolve(label)
 
@@ -61,6 +79,7 @@ sealed interface Environment {
 
     override val label = LABEL
     override val apiEndpoint = ApiEndpoint("http://127.0.0.1:$port")
+    override val cognito: CognitoConfig? = null
 
     override val marker = "[local]"
 
@@ -72,6 +91,10 @@ sealed interface Environment {
     const val ENV_VAR = "COUNTER_ENVIRONMENT"
     const val LOCAL_CONFIG_PATH_ENV = "COUNTER_LOCAL_CONFIG_PATH"
     const val LOCAL_PORT_ENV = "COUNTER_API_LOCAL_PORT"
+
+    /** A [CognitoConfig] from the baked issuer + client id, or null when either wasn't baked in. */
+    private fun cognitoOrNull(issuer: String, clientId: String): CognitoConfig? =
+        if (issuer.isNotBlank() && clientId.isNotBlank()) CognitoConfig(issuer, clientId) else null
 
     /**
      * Resolve the environment for this invocation from the `COUNTER_ENVIRONMENT` selector (the

@@ -96,7 +96,7 @@ resource "aws_apigatewayv2_authorizer" "cognito" {
 
   jwt_configuration {
     issuer   = var.cognito_issuer_url
-    audience = [var.cognito_spa_client_id]
+    audience = [var.cognito_spa_client_id, var.cognito_cli_client_id]
   }
 }
 

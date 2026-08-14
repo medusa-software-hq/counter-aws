@@ -47,7 +47,12 @@ variable "cognito_issuer_url" {
 }
 
 variable "cognito_spa_client_id" {
-  description = "Cognito SPA app-client id; the audience the JWT authorizer requires."
+  description = "Cognito SPA app-client id; an audience the JWT authorizer accepts."
+  type        = string
+}
+
+variable "cognito_cli_client_id" {
+  description = "Cognito CLI app-client id; an audience the JWT authorizer accepts."
   type        = string
 }
 
