@@ -1,0 +1,28 @@
+name: Test staging
+
+# Post-deploy checks that gate promotion to production: called by deploy-api between the staging and
+# production phases, so production only proceeds if staging is healthy. Kept to black-box checks over
+# the public staging endpoints (no credentials), which is what a promotion gate needs.
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Check staging API
+    runs-on: ubuntu-latest
+    steps:
+      - name: Staging API rejects unauthenticated calls
+        run: |
+          url="https://api.counter-aws-staging.medusa.software/counter/get"
+          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 "$url")
+          echo "GET $url -> $code"
+          # The Cognito JWT authorizer must reject an unauthenticated request; any other code means
+          # the API is down, misrouted, or the authorizer isn't in front of it.
+          if [ "$code" != "401" ]; then
+            echo "::error::expected 401 from the authorizer, got $code"
+            exit 1
+          fi
