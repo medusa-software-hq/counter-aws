@@ -1,27 +1,36 @@
 name: Test staging
 
-# Post-deploy checks that gate promotion to production: called by deploy-api between the staging and
-# production phases, so production only proceeds if staging is healthy. Kept to black-box checks over
-# the public staging endpoints (no credentials), which is what a promotion gate needs.
+# Post-deploy checks that gate promotion to production: called by a deploy workflow between its
+# staging and production phases, so production only proceeds if staging is healthy. Black-box checks
+# over the public staging endpoints (no credentials) — what a promotion gate needs. Each caller passes
+# the surface it just deployed via `target`.
+#
+# The checks retry: the first staging deploy of a surface creates its host + Cloudflare DNS record
+# from scratch, which takes a short while to resolve on the runner, so a single request would
+# false-fail the gate.
 
 on:
   workflow_call:
+    inputs:
+      target:
+        description: "Which staging surface to check: 'api' or 'web'."
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 jobs:
   test:
-    name: Check staging API
+    name: Check staging ${{ inputs.target }}
     runs-on: ubuntu-latest
     steps:
       - name: Staging API rejects unauthenticated calls
+        if: inputs.target == 'api'
         run: |
+          # The Cognito JWT authorizer must reject an unauthenticated request with 401; anything else
+          # means the API is down, misrouted, or the authorizer isn't in front of it.
           url="https://api.counter-aws-staging.medusa.software/counter/get"
-          # The Cognito JWT authorizer must reject an unauthenticated request with 401; any other code
-          # means the API is down, misrouted, or the authorizer isn't in front of it. Retry, because
-          # the very first staging deploy creates this host and its Cloudflare DNS record from scratch,
-          # so it can take a short while to resolve on the runner — a single curl would false-fail.
           for attempt in $(seq 1 10); do
             code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "$url" || true)
             echo "attempt $attempt: GET $url -> $code"
@@ -29,4 +38,17 @@ jobs:
             sleep 15
           done
           echo "::error::staging API never returned 401 (last: $code)"
+          exit 1
+
+      - name: Staging SPA is served
+        if: inputs.target == 'web'
+        run: |
+          url="https://counter-aws-staging.medusa.software/"
+          for attempt in $(seq 1 10); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "$url" || true)
+            echo "attempt $attempt: GET $url -> $code"
+            [ "$code" = "200" ] && exit 0
+            sleep 15
+          done
+          echo "::error::staging SPA never returned 200 (last: $code)"
           exit 1

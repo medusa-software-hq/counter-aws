@@ -96,6 +96,8 @@ jobs:
     name: Test staging
     needs: deploy-staging
     uses: ./.github/workflows/test-staging.yml
+    with:
+      target: api
 
   deploy-production:
     name: Deploy production
