@@ -18,11 +18,15 @@ jobs:
       - name: Staging API rejects unauthenticated calls
         run: |
           url="https://api.counter-aws-staging.medusa.software/counter/get"
-          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 "$url")
-          echo "GET $url -> $code"
-          # The Cognito JWT authorizer must reject an unauthenticated request; any other code means
-          # the API is down, misrouted, or the authorizer isn't in front of it.
-          if [ "$code" != "401" ]; then
-            echo "::error::expected 401 from the authorizer, got $code"
-            exit 1
-          fi
+          # The Cognito JWT authorizer must reject an unauthenticated request with 401; any other code
+          # means the API is down, misrouted, or the authorizer isn't in front of it. Retry, because
+          # the very first staging deploy creates this host and its Cloudflare DNS record from scratch,
+          # so it can take a short while to resolve on the runner — a single curl would false-fail.
+          for attempt in $(seq 1 10); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "$url" || true)
+            echo "attempt $attempt: GET $url -> $code"
+            [ "$code" = "401" ] && exit 0
+            sleep 15
+          done
+          echo "::error::staging API never returned 401 (last: $code)"
+          exit 1
