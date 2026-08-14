@@ -30,7 +30,6 @@ locals {
   # and Terraform state prefixes.
   gh_organization_name   = "medusa-software-hq"
   gh_repo_name           = "counter-aws"
-  gh_api_url_var_name    = "API_URL"
   gh_default_branch_name = "trunk/aws" # 🎨 TEMPLATE EJECT: Change the default branch
 
   # The releases repo the CLI publishes its fat jar to (provisioned by the root
@@ -57,12 +56,11 @@ locals {
   # hosts themselves come straight from config.json (below).
   subdomain_label = "${local.project_base_name}-${local.project_variant}${local.resource_name_suffix}"
 
-  # The API's public host, from config.json: the domain mapping publishes it (DNS
-  # record) and CI/CD hands it to the web build as VITE_API_URL. Sourcing it from
-  # the single config keeps those uses from drifting from the deployed subdomain.
+  # The API's public host, from config.json: the domain mapping publishes its DNS
+  # record. Sourcing it from the single config keeps every use from drifting from
+  # the deployed subdomain.
   api_subdomain_name = "api.${local.subdomain_label}"
   api_host_name      = local.selected_env_config.api_host
-  api_url            = "https://${local.api_host_name}"
 
   # The web app's public host — the SPA is served here (CloudFront + ACM), and
   # the domain mapping points its DNS record at the distribution.
@@ -80,10 +78,6 @@ output "gh_organization_name" {
 
 output "gh_repo_name" {
   value = local.gh_repo_name
-}
-
-output "gh_api_url_var_name" {
-  value = local.gh_api_url_var_name
 }
 
 output "project_base_name" {
@@ -122,9 +116,6 @@ output "api_host_name" {
   value = local.api_host_name
 }
 
-output "api_url" {
-  value = local.api_url
-}
 
 output "web_subdomain_name" {
   value = local.web_subdomain_name

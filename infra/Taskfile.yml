@@ -1,36 +1,26 @@
 version: '3'
 
+# Top-level convenience: format and lint every Terraform root and module under infra/ at once. Each
+# root (root/shared, root/env-matrix, config) has its own Taskfile for init/validate.
+
 .terraformSources: &terraformSources
   - '**/*.tf'
 
 tasks:
   fmt:check:
-    desc: Check Terraform formatting
+    desc: Check Terraform formatting across all of infra/
     sources: *terraformSources
     cmds:
       - terraform fmt -check -recursive
 
   fmt:fix:
-    desc: Fix Terraform formatting
+    desc: Fix Terraform formatting across all of infra/
     sources: *terraformSources
     cmds:
       - terraform fmt -recursive
 
   lint:
-    desc: Lint the Terraform sources
+    desc: Lint all Terraform sources under infra/
     sources: *terraformSources
     cmds:
       - tflint --recursive
-
-  init:
-    desc: Initialize the Terraform working directory
-    sources: *terraformSources
-    cmds:
-      - terraform init
-
-  validate:
-    desc: Validate the Terraform configuration
-    deps: [init]
-    sources: *terraformSources
-    cmds:
-      - terraform validate

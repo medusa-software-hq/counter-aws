@@ -1,15 +1,15 @@
 # Configuration
+#
+# Per-environment resources for this variant — one Terraform workspace per environment (`prod`,
+# `staging`): the Cognito user pool + IdC federation and the per-environment Actions variables the
+# deploys read. Applied with the operator's credentials.
 
 terraform {
   required_version = ">= 1.14"
 
-  # Shared state bucket, provisioned by the meta repo; the name is also in
-  # common (backend blocks take no variables). Counter keys under its own
-  # prefix; the default workspace (prod) keys at that prefix, other workspaces
-  # get an `env:/<workspace>/` prefix.
   backend "s3" {
     bucket       = "ms-tfstate-aws-682544514886"
-    key          = "projects/counter/aws/root/terraform.tfstate"
+    key          = "projects/counter/aws/root/env-matrix/terraform.tfstate"
     region       = "eu-central-1"
     encrypt      = true
     use_lockfile = true
@@ -31,16 +31,9 @@ terraform {
   }
 }
 
-# Module imports
-
 module "common" {
-  source = "./common"
+  source = "../../common"
 }
-
-# Providers
-
-# GitHub provider for writing CI/CD Actions variables. The repository itself is
-# managed by the .github/config root; here it is only referenced as data.
 
 variable "gh_token" {
   description = "Organization-owned GitHub token."
@@ -57,7 +50,6 @@ data "github_repository" "this" {
   full_name = "${module.common.gh_organization_name}/${module.common.gh_repo_name}"
 }
 
-# AWS
 provider "aws" {
   region = module.common.aws_primary_location
 }
