@@ -3,28 +3,36 @@
 # Cognito-issued JWT (issuer + audience below). Per environment (prod/staging
 # each get their own pool), operator-applied with the rest of the root infra.
 #
-# Federation was enabled in two steps because the SAML trust is bidirectional
-# and half of it is a console action: this pool + its Hosted-UI domain exist
-# first (they define the ACS URL + SP entity id the IdC SAML application points
-# at), then IdC emits its metadata, wired below via `idc_saml_metadata_url`. The
-# default is the created application's metadata endpoint; overriding with "" (or
-# a fresh URL) is how the trust is rebuilt if the IdC app is recreated.
+# Federation is wired in two steps because the SAML trust is bidirectional and half of it is a console
+# action: this pool + its Hosted-UI domain exist first (they define the ACS URL + SP entity id the IdC
+# SAML application points at — the `cognito_saml_*` outputs), then the app is created (with
+# `automaton aws saml create`) and IdC emits its metadata URL, which goes into `idc_saml_metadata_urls`
+# below to wire the trust on a re-apply. Empty for that environment until then.
 
-variable "idc_saml_metadata_url" {
-  description = "Metadata URL of the IAM Identity Center SAML application for this pool."
-  type        = string
-  default     = "https://portal.sso.eu-central-1.amazonaws.com/saml/metadata/NjgyNTQ0NTE0ODg2X2lucy02OTg3MzUyNzdhNzdjOGU3"
+# IdC SAML application metadata URL, per environment — each pool federates to its own IdC app. Empty
+# for an environment whose app doesn't exist yet: the pool applies with a COGNITO fallback IdP, which
+# defines the SP entity id + ACS URL the app is created against (see the header); fill the URL in and
+# re-apply to wire the trust. The apps are created with `automaton aws saml create`.
+variable "idc_saml_metadata_urls" {
+  description = "IdC SAML application metadata URL per environment (empty until the app exists)."
+  type        = map(string)
+  default = {
+    prod    = "https://portal.sso.eu-central-1.amazonaws.com/saml/metadata/NjgyNTQ0NTE0ODg2X2lucy02OTg3MzUyNzdhNzdjOGU3"
+    staging = "https://portal.sso.eu-central-1.amazonaws.com/saml/metadata/NjgyNTQ0NTE0ODg2X2lucy02OTg3NGZiY2Q2NTMwNWJj"
+  }
 }
 
 locals {
   cognito_name = "${module.common.aws_resource_prefix}${module.common.resource_name_suffix}"
+
+  idc_saml_metadata_url = lookup(var.idc_saml_metadata_urls, module.common.environment, "")
 
   # Hosted-UI domain prefix. It must be globally unique and must NOT contain the
   # reserved words aws/amazon/cognito — so it cannot be derived from the
   # `counter-aws` resource prefix; use the org name + account id instead.
   cognito_domain_prefix = "medusa-counter${module.common.resource_name_suffix}-${module.common.aws_account_id}"
 
-  saml_enabled       = var.idc_saml_metadata_url != ""
+  saml_enabled       = local.idc_saml_metadata_url != ""
   saml_provider_name = "IdC"
   # Federated users get identities only from IdC; before that trust exists the
   # pool has no usable IdP, so fall back to COGNITO to keep the clients valid.
@@ -77,7 +85,7 @@ resource "aws_cognito_identity_provider" "idc" {
   provider_type = "SAML"
 
   provider_details = {
-    MetadataURL = var.idc_saml_metadata_url
+    MetadataURL = local.idc_saml_metadata_url
     IDPSignout  = "true"
   }
 
