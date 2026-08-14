@@ -1,5 +1,14 @@
 name: Deploy API
 
+# Phased promotion: build the native zip once, apply it to staging, test staging, then promote the
+# same artifact to production. The jobs are chained with `needs:`, so a failed staging apply or a
+# failed staging test blocks production — broken code or infra never reaches prod.
+#
+# The API artifact is a Terraform-managed resource (the Lambda's `filename` zip), so "deploy" *is*
+# `terraform apply`; there is no separate push step to split out. Each environment applies the
+# foundation in its own Terraform workspace (production stays on `default`), and `environment:` makes
+# the per-environment Cognito variables resolve to the right pool.
+
 on:
   push:
     branches: ["trunk/*"]
@@ -15,26 +24,19 @@ permissions:
   id-token: write # assume the CI/CD role via OIDC
   contents: read
 
+env:
+  AWS_REGION: eu-central-1
+  AWS_ROLE_ARN: arn:aws:iam::682544514886:role/counter-aws-github-actions
+  JAVA_VERSION: "21"
+  TERRAFORM_VERSION: 1.14
+  LAMBDA_ZIP_PATH: backend/api/handler/build/libs/handler-1.0.0-lambda.zip
+
 jobs:
-  deploy:
-    name: Build & deploy
+  build:
+    name: Build native zip
     runs-on: ubuntu-latest
-    environment: production
-
-    env:
-      AWS_REGION: eu-central-1
-      AWS_ROLE_ARN: arn:aws:iam::682544514886:role/counter-aws-github-actions
-      JAVA_VERSION: "21"
-      TERRAFORM_VERSION: 1.14
-
     steps:
       - uses: actions/checkout@v6
-
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ env.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
 
       - uses: actions/setup-java@v4
         with:
@@ -45,14 +47,38 @@ jobs:
 
       - name: Build the native custom-runtime zip
         # GraalVM native-image is cross-built in Docker (available on the runner) and packaged as a
-        # provided.al2023 `bootstrap` zip that Terraform uploads directly.
+        # provided.al2023 `bootstrap` zip. The zip is config-agnostic (Cognito/DB come from Terraform
+        # at apply), so the identical artifact promotes from staging to production.
         run: ./gradlew :backend:api:handler:buildNativeLambda
 
+      - name: Upload the native zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: lambda-zip
+          path: ${{ env.LAMBDA_ZIP_PATH }}
+          if-no-files-found: error
+          retention-days: 1
+
+  deploy-staging:
+    name: Deploy staging
+    needs: build
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v6
+      - name: Download the native zip
+        uses: actions/download-artifact@v4
+        with:
+          name: lambda-zip
+          path: backend/api/handler/build/libs
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
       - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: ~> ${{ env.TERRAFORM_VERSION }}
-
-      - name: Apply the API foundation
+      - name: Apply the API foundation (staging workspace)
         working-directory: backend/infra/foundation
         env:
           TF_VAR_neon_api_key: ${{ secrets.NEON_API_KEY }}
@@ -63,4 +89,45 @@ jobs:
           TF_VAR_cloudflare_zone_id: ${{ vars.CLOUDFLARE_ZONE_ID }}
         run: |
           terraform init -input=false
+          terraform workspace select -or-create=true staging
+          terraform apply -auto-approve -input=false
+
+  test-staging:
+    name: Test staging
+    needs: deploy-staging
+    uses: ./.github/workflows/test-staging.yml
+    with:
+      target: api
+
+  deploy-production:
+    name: Deploy production
+    needs: test-staging
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v6
+      - name: Download the native zip
+        uses: actions/download-artifact@v4
+        with:
+          name: lambda-zip
+          path: backend/api/handler/build/libs
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ~> ${{ env.TERRAFORM_VERSION }}
+      - name: Apply the API foundation (production)
+        working-directory: backend/infra/foundation
+        env:
+          TF_VAR_neon_api_key: ${{ secrets.NEON_API_KEY }}
+          TF_VAR_cognito_issuer_url: ${{ vars.COGNITO_ISSUER_URL }}
+          TF_VAR_cognito_spa_client_id: ${{ vars.COGNITO_SPA_CLIENT_ID }}
+          TF_VAR_cognito_cli_client_id: ${{ vars.COGNITO_CLI_CLIENT_ID }}
+          TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          TF_VAR_cloudflare_zone_id: ${{ vars.CLOUDFLARE_ZONE_ID }}
+        run: |
+          terraform init -input=false
+          terraform workspace select default
           terraform apply -auto-approve -input=false

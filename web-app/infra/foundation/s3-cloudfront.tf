@@ -18,6 +18,11 @@ locals {
 data "terraform_remote_state" "api" {
   backend = "s3"
 
+  # Read the API foundation state for THIS environment: the web + API foundations use matching
+  # workspaces (default = production, staging = staging), so staging web points at the staging API,
+  # not production's.
+  workspace = terraform.workspace
+
   config = {
     bucket = "ms-tfstate-aws-682544514886"
     key    = "projects/counter/aws/api/foundation/terraform.tfstate"
