@@ -47,7 +47,13 @@ resource "aws_apigatewayv2_api_mapping" "api" {
   stage       = aws_apigatewayv2_stage.default.id
 }
 
-# The regional API Gateway hostname the public DNS record (see the API domain-mapping root) points at.
-output "api_domain_target" {
-  value = aws_apigatewayv2_domain_name.api.domain_name_configuration[0].target_domain_name
+# Point the public API host at the regional API Gateway custom domain. Not proxied: API Gateway
+# terminates TLS with its own ACM certificate for this host, so Cloudflare must stay out of the path.
+resource "cloudflare_dns_record" "api" {
+  zone_id = var.cloudflare_zone_id
+  type    = "CNAME"
+  name    = module.common.api_subdomain_name
+  content = aws_apigatewayv2_domain_name.api.domain_name_configuration[0].target_domain_name
+  ttl     = 1 # "automatic"
+  proxied = false
 }
