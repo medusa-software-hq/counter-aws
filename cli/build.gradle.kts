@@ -129,18 +129,28 @@ val generateEnvironments by tasks.registering {
       )
       appendLine("package software.medusa.counter.cli.config")
       appendLine()
-      appendLine("internal object GeneratedEnvironments {")
-      appendLine("  const val prodApiHost: String = \"${apiHost("prod")}\"")
-      appendLine("  const val stagingApiHost: String = \"${apiHost("staging")}\"")
-      cognitoValues.forEach { (name, value) ->
-        appendLine("  const val $name: String = \"${value.get()}\"")
+      appendLine("internal sealed interface EnvironmentConfig {")
+      appendLine("  val apiHost: String")
+      appendLine("  val cognitoIssuer: String")
+      appendLine("  val cognitoClientId: String")
+      listOf("prod" to "Prod", "staging" to "Staging").forEach { (env, obj) ->
+        appendLine()
+        appendLine("  object $obj : EnvironmentConfig {")
+        appendLine("    override val apiHost: String = \"${apiHost(env)}\"")
+        appendLine(
+            "    override val cognitoIssuer: String = \"${cognitoValues.getValue("${env}CognitoIssuer").get()}\""
+        )
+        appendLine(
+            "    override val cognitoClientId: String = \"${cognitoValues.getValue("${env}CognitoClientId").get()}\""
+        )
+        appendLine("  }")
       }
       appendLine("}")
     }
 
     val packageDir = generatedEnvironmentsDir.get().dir("software/medusa/counter/cli/config").asFile
     packageDir.mkdirs()
-    packageDir.resolve("GeneratedEnvironments.kt").writeText(content)
+    packageDir.resolve("EnvironmentConfig.kt").writeText(content)
   }
 }
 
