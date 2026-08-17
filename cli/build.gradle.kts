@@ -95,11 +95,11 @@ val generatedEnvironmentsDir = layout.buildDirectory.dir("generated/environments
 
 // The API host is author-derived, so it comes from the committed config.json. The Cognito issuer +
 // client id are Cognito-generated (they only exist after root infra applies), so they're baked from
-// per-environment build variables. A single build can't be in two GitHub environments at once, so
-// the publish workflow maps each environment's `COGNITO_*` to a `_PROD`/`_STAGING`-suffixed build
-// var
-// (symmetric — prod is not the unsuffixed default). Unset (a local build, or staging without CI) →
-// empty → login reports it.
+// per-environment build variables, suffixed `_PROD`/`_STAGING` (symmetric — prod is not the
+// unsuffixed default). The publish workflow reads each environment's `COGNITO_*` and maps them
+// here,
+// so the published CLI can log in to either. Unset (a local build) → empty → login reports that
+// environment as unavailable.
 val cognitoValues =
     mapOf(
         "prodCognitoIssuer" to providers.environmentVariable("COGNITO_ISSUER_URL_PROD").orElse(""),

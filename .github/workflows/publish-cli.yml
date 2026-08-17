@@ -15,13 +15,54 @@ env:
   JAVA_VERSION: 21
 
 jobs:
+  # Each deployed environment's Cognito config is a per-environment Actions variable, and a job can
+  # only join one environment — so a small job per environment surfaces its (public) values as outputs
+  # for the env-agnostic publish job below, which bakes both into the one jar.
+  read-prod-config:
+    name: Read prod config
+    runs-on: ubuntu-latest
+    environment: production
+    outputs:
+      cognito-issuer: ${{ steps.read.outputs.cognito-issuer }}
+      cognito-client-id: ${{ steps.read.outputs.cognito-client-id }}
+    steps:
+      - name: Read prod Cognito config
+        id: read
+        env:
+          ISSUER: ${{ vars.COGNITO_ISSUER_URL }}
+          CLIENT_ID: ${{ vars.COGNITO_CLI_CLIENT_ID }}
+        run: |
+          {
+            echo "cognito-issuer=$ISSUER"
+            echo "cognito-client-id=$CLIENT_ID"
+          } >> "$GITHUB_OUTPUT"
+
+  read-staging-config:
+    name: Read staging config
+    runs-on: ubuntu-latest
+    environment: staging
+    outputs:
+      cognito-issuer: ${{ steps.read.outputs.cognito-issuer }}
+      cognito-client-id: ${{ steps.read.outputs.cognito-client-id }}
+    steps:
+      - name: Read staging Cognito config
+        id: read
+        env:
+          ISSUER: ${{ vars.COGNITO_ISSUER_URL }}
+          CLIENT_ID: ${{ vars.COGNITO_CLI_CLIENT_ID }}
+        run: |
+          {
+            echo "cognito-issuer=$ISSUER"
+            echo "cognito-client-id=$CLIENT_ID"
+          } >> "$GITHUB_OUTPUT"
+
   publish-cli:
     name: Publish CLI fat jar
+    needs: [read-prod-config, read-staging-config]
     runs-on: ubuntu-latest
-
-    # `environment: production` resolves the COGNITO_* vars + the releases app id to prod's values.
-    # The published CLI targets prod; staging is reachable via COUNTER_ENVIRONMENT=staging.
-    environment: production
+    # No `environment:` — publishing is cross-environment. Each environment's Cognito config comes from
+    # the read-*-config jobs above; the releaser app id (repo variable) + key (repo secret) are
+    # repo-level, so no environment is needed to reach them.
 
     steps:
       - uses: actions/checkout@v6
@@ -36,18 +77,14 @@ jobs:
 
       - name: Build fat jar
         working-directory: cli
-        # Bake the Cognito issuer + CLI client id into the jar so the published CLI can sign in. They
-        # come from the per-environment COGNITO_* CI variables (the public values the SPA and the API
-        # authorizer also consume — no secret involved). The API host is not baked from here: it's
-        # author-derived and read from the committed config.json. Staging's vars aren't in this
-        # (production) environment, so they bake empty and `COUNTER_ENVIRONMENT=staging ms-counter
-        # login` reports that cleanly.
-        # This job runs in the production environment, so vars.COGNITO_* resolve to prod's; map them to
-        # the build's _PROD-suffixed inputs. Staging's are unreachable from here, so they stay unset
-        # (bake empty).
+        # Bake each environment's Cognito issuer + CLI client id (public values — no secret) into the
+        # one jar, so `login` works for both prod and staging. The API host is not baked here: it's
+        # author-derived and read from the committed config.json.
         env:
-          COGNITO_ISSUER_URL_PROD: ${{ vars.COGNITO_ISSUER_URL }}
-          COGNITO_CLI_CLIENT_ID_PROD: ${{ vars.COGNITO_CLI_CLIENT_ID }}
+          COGNITO_ISSUER_URL_PROD: ${{ needs.read-prod-config.outputs.cognito-issuer }}
+          COGNITO_CLI_CLIENT_ID_PROD: ${{ needs.read-prod-config.outputs.cognito-client-id }}
+          COGNITO_ISSUER_URL_STAGING: ${{ needs.read-staging-config.outputs.cognito-issuer }}
+          COGNITO_CLI_CLIENT_ID_STAGING: ${{ needs.read-staging-config.outputs.cognito-client-id }}
         run: |
           ../gradlew :cli:shadowJar
           echo "JAR=$GITHUB_WORKSPACE/cli/build/libs/counter-cli.jar" >> $GITHUB_ENV
