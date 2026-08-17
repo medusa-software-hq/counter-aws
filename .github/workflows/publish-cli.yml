@@ -42,9 +42,12 @@ jobs:
         # author-derived and read from the committed config.json. Staging's vars aren't in this
         # (production) environment, so they bake empty and `COUNTER_ENVIRONMENT=staging ms-counter
         # login` reports that cleanly.
+        # This job runs in the production environment, so vars.COGNITO_* resolve to prod's; map them to
+        # the build's _PROD-suffixed inputs. Staging's are unreachable from here, so they stay unset
+        # (bake empty).
         env:
-          COGNITO_ISSUER_URL: ${{ vars.COGNITO_ISSUER_URL }}
-          COGNITO_CLI_CLIENT_ID: ${{ vars.COGNITO_CLI_CLIENT_ID }}
+          COGNITO_ISSUER_URL_PROD: ${{ vars.COGNITO_ISSUER_URL }}
+          COGNITO_CLI_CLIENT_ID_PROD: ${{ vars.COGNITO_CLI_CLIENT_ID }}
         run: |
           ../gradlew :cli:shadowJar
           echo "JAR=$GITHUB_WORKSPACE/cli/build/libs/counter-cli.jar" >> $GITHUB_ENV

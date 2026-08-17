@@ -61,10 +61,12 @@ COUNTER_API_LOCAL_PORT=8081 \
 ```
 
 The local backend uses no-op auth, so `get`/`increment`/`decrement` work without
-`login` (the CLI still attaches a token; the no-op decorator ignores it). A local
-build has no OAuth client secret baked in; set the per-env secret env var
-(`COUNTER_CLI_OAUTH_CLIENT_SECRET` for prod, `…_STAGING` for staging) if you need
-`login` to run against a real environment from a dev build.
+`login` (the CLI still attaches a token; the no-op decorator ignores it). Sign-in
+is public PKCE — no client secret — but a dev build bakes no Cognito config, so
+`login` against a real environment only works if you build with that
+environment's values (`COGNITO_ISSUER_URL_PROD` + `COGNITO_CLI_CLIENT_ID_PROD`,
+or the `_STAGING` pair); the published CLI has them baked. To call a real API
+from a dev build without signing in, set `COUNTER_DEV_TOKEN` to a token you hold.
 
 Common tasks (via [Task](https://taskfile.dev)):
 
