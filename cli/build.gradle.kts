@@ -95,13 +95,16 @@ val generatedEnvironmentsDir = layout.buildDirectory.dir("generated/environments
 
 // The API host is author-derived, so it comes from the committed config.json. The Cognito issuer +
 // client id are Cognito-generated (they only exist after root infra applies), so they're baked from
-// the per-environment CI variables at build time — the same COGNITO_* GitHub vars the SPA and the
-// API
-// authorizer consume. Unset (e.g. a local build, or staging without CI) → empty → login reports it.
+// per-environment build variables, suffixed `_PROD`/`_STAGING` (symmetric — prod is not the
+// unsuffixed default). The publish workflow reads each environment's `COGNITO_*` and maps them
+// here,
+// so the published CLI can log in to either. Unset (a local build) → empty → login reports that
+// environment as unavailable.
 val cognitoValues =
     mapOf(
-        "prodCognitoIssuer" to providers.environmentVariable("COGNITO_ISSUER_URL").orElse(""),
-        "prodCognitoClientId" to providers.environmentVariable("COGNITO_CLI_CLIENT_ID").orElse(""),
+        "prodCognitoIssuer" to providers.environmentVariable("COGNITO_ISSUER_URL_PROD").orElse(""),
+        "prodCognitoClientId" to
+            providers.environmentVariable("COGNITO_CLI_CLIENT_ID_PROD").orElse(""),
         "stagingCognitoIssuer" to
             providers.environmentVariable("COGNITO_ISSUER_URL_STAGING").orElse(""),
         "stagingCognitoClientId" to
@@ -129,18 +132,28 @@ val generateEnvironments by tasks.registering {
       )
       appendLine("package software.medusa.counter.cli.config")
       appendLine()
-      appendLine("internal object GeneratedEnvironments {")
-      appendLine("  const val prodApiHost: String = \"${apiHost("prod")}\"")
-      appendLine("  const val stagingApiHost: String = \"${apiHost("staging")}\"")
-      cognitoValues.forEach { (name, value) ->
-        appendLine("  const val $name: String = \"${value.get()}\"")
+      appendLine("internal sealed interface EnvironmentConfig {")
+      appendLine("  val apiHost: String")
+      appendLine("  val cognitoIssuer: String")
+      appendLine("  val cognitoClientId: String")
+      listOf("prod" to "Prod", "staging" to "Staging").forEach { (env, obj) ->
+        appendLine()
+        appendLine("  object $obj : EnvironmentConfig {")
+        appendLine("    override val apiHost: String = \"${apiHost(env)}\"")
+        appendLine(
+            "    override val cognitoIssuer: String = \"${cognitoValues.getValue("${env}CognitoIssuer").get()}\""
+        )
+        appendLine(
+            "    override val cognitoClientId: String = \"${cognitoValues.getValue("${env}CognitoClientId").get()}\""
+        )
+        appendLine("  }")
       }
       appendLine("}")
     }
 
     val packageDir = generatedEnvironmentsDir.get().dir("software/medusa/counter/cli/config").asFile
     packageDir.mkdirs()
-    packageDir.resolve("GeneratedEnvironments.kt").writeText(content)
+    packageDir.resolve("EnvironmentConfig.kt").writeText(content)
   }
 }
 

@@ -10,9 +10,9 @@ import software.medusa.counter.cli.api.ApiEndpoint
  *
  * Each environment is a self-contained bundle of everything a command needs — where its state lives
  * (partitioned, never mixed) and which backend to talk to — so the CLI behaves as N independent
- * instances sharing a binary. The prod/staging backend URLs are deterministic, public,
- * Terraform-computed values kept in sync with `infra/common`'s `environment_config` (the
- * `api.<subdomain_label>.<domain>` host) — mirrored here as source constants.
+ * instances sharing a binary. Each deployed environment's backend host + Cognito config are baked
+ * in at build time as a generated [EnvironmentConfig] (from `infra/config` + the Cognito CI
+ * variables), so the CLI can't drift from the deployed environments.
  */
 sealed interface Environment {
   /**
@@ -32,7 +32,7 @@ sealed interface Environment {
   /**
    * How to sign in against this environment's Cognito, or null when it wasn't baked into the build.
    * Only builds published with the per-environment Cognito CI variables can log in (see
-   * GeneratedEnvironments); otherwise `login` reports it cleanly and API calls fall back to the
+   * [EnvironmentConfig]); otherwise `login` reports it cleanly and API calls fall back to the
    * COUNTER_DEV_TOKEN override.
    */
   val cognito: CognitoConfig?
@@ -40,31 +40,27 @@ sealed interface Environment {
   /** The one-line stderr banner a non-prod session prints so a human can't mix environments. */
   val marker: String?
 
-  data object Prod : Environment {
+  /**
+   * A deployed environment (prod/staging) whose backend host + Cognito config were baked into the
+   * build as an [EnvironmentConfig]. The endpoint and sign-in config are derived from that
+   * [config]; state is partitioned by [label]. Concrete environments only supply their
+   * [label] + [marker].
+   */
+  sealed class Remote(internal val config: EnvironmentConfig) : Environment {
+    final override val apiEndpoint = ApiEndpoint("https://${config.apiHost}")
+    final override val cognito = cognitoOrNull(config.cognitoIssuer, config.cognitoClientId)
+
+    final override fun resolveConfigDirPath(baseConfigPath: Path): Path =
+        baseConfigPath.resolve(label)
+  }
+
+  data object Prod : Remote(EnvironmentConfig.Prod) {
     override val label = "prod"
-    override val apiEndpoint = ApiEndpoint("https://${GeneratedEnvironments.prodApiHost}")
-    override val cognito =
-        cognitoOrNull(
-            GeneratedEnvironments.prodCognitoIssuer,
-            GeneratedEnvironments.prodCognitoClientId,
-        )
-
-    override fun resolveConfigDirPath(baseConfigPath: Path): Path = baseConfigPath.resolve(label)
-
     override val marker: String? = null
   }
 
-  data object Staging : Environment {
+  data object Staging : Remote(EnvironmentConfig.Staging) {
     override val label = "staging"
-    override val apiEndpoint = ApiEndpoint("https://${GeneratedEnvironments.stagingApiHost}")
-    override val cognito =
-        cognitoOrNull(
-            GeneratedEnvironments.stagingCognitoIssuer,
-            GeneratedEnvironments.stagingCognitoClientId,
-        )
-
-    override fun resolveConfigDirPath(baseConfigPath: Path): Path = baseConfigPath.resolve(label)
-
     override val marker = "[staging]"
   }
 
