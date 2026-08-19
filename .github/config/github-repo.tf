@@ -33,6 +33,7 @@ locals {
 
   check_workflows_job_name     = "Workflows"
   check_infra_job_name         = "Infra (root)"
+  check_config_job_name        = "Config"
   check_web_app_infra_job_name = "Web app (infra)"
   check_web_app_impl_job_name  = "Web app (implementation)"
   check_api_infra_job_name     = "API (infra)"
@@ -80,6 +81,11 @@ resource "github_repository_ruleset" "trunk_branches" {
 
       required_check {
         context        = "${local.check_infra_job_name} / Check Terraform formatting"
+        integration_id = local.gh_actions_integration_id
+      }
+
+      required_check {
+        context        = "${local.check_config_job_name} / Check Terraform configuration"
         integration_id = local.gh_actions_integration_id
       }
 
