@@ -23,15 +23,27 @@ class ConfigStore(private val dir: Path) {
     return json.decodeFromString(Files.readString(credentialsFile))
   }
 
-  /** Writes [credentials] with dir 0700 / file 0600, set atomically at creation where supported. */
+  /**
+   * Writes [credentials] with dir 0700 / file 0600, set atomically at creation. Only a platform
+   * without POSIX permissions (Windows) falls back to default attributes; every other failure
+   * propagates, because a token file silently created world-readable is worse than a failed save.
+   */
   fun saveCredentials(credentials: Credentials) {
     if (!Files.exists(dir)) {
-      runCatching { Files.createDirectory(dir, DIR_PERMISSIONS) }
-          .getOrElse { Files.createDirectories(dir) }
+      // The parents are ordinary config directories; only the leaf holds the token.
+      dir.parent?.let { Files.createDirectories(it) }
+      try {
+        Files.createDirectory(dir, DIR_PERMISSIONS)
+      } catch (unsupported: UnsupportedOperationException) {
+        Files.createDirectory(dir)
+      }
     }
     Files.deleteIfExists(credentialsFile)
-    runCatching { Files.createFile(credentialsFile, FILE_PERMISSIONS) }
-        .getOrElse { Files.createFile(credentialsFile) }
+    try {
+      Files.createFile(credentialsFile, FILE_PERMISSIONS)
+    } catch (unsupported: UnsupportedOperationException) {
+      Files.createFile(credentialsFile)
+    }
     Files.writeString(credentialsFile, json.encodeToString(credentials))
   }
 

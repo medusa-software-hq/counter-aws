@@ -4,7 +4,6 @@ export interface AuthUser {
   sub: string;
   email: string;
   name: string;
-  picture: string;
 }
 
 export type AuthState =
@@ -18,6 +17,8 @@ export interface AuthContextValue {
   handleUnauthorized: () => void;
   /** Imperatively trigger sign-in (used by SignInWall). */
   signIn: () => void;
+  /** End the session, including Cognito's, and return to the sign-in wall. */
+  signOut: () => void;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
