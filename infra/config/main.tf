@@ -4,9 +4,9 @@ terraform {
 
 locals {
   # Shared across every environment; combined into per-environment derived values.
-  project = "counter" # 🎨 TEMPLATE EJECT: Choose an org-unique project base name
-  variant = "aws"     # 🎨 TEMPLATE EJECT: Choose a project-unique variant name
-  domain  = "medusa.software"
+  project = "counter"         # 🎨 TEMPLATE EJECT: Choose an org-unique project base name
+  variant = "aws"             # 🎨 TEMPLATE EJECT: Choose a project-unique variant name
+  domain  = "medusa.software" # 🎨 TEMPLATE EJECT: Change to your organization's domain
 
   # Hand-edited per-environment static constants (the GitHub deployment Environment name and the
   # resource-name suffix). The single source of truth for values that must stay identical between
