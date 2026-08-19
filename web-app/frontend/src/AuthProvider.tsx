@@ -36,7 +36,6 @@ function authenticatedState(user: User): AuthState {
     sub: claims.sub,
     email: claims.email ?? '',
     name: claims.name ?? claims.email ?? '',
-    picture: claims.picture ?? '',
   };
   return { status: 'authenticated', token: user.id_token ?? '', user: authUser };
 }
@@ -84,5 +83,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ status: 'unauthenticated' });
   }, []);
 
-  return <AuthContext value={{ state, handleUnauthorized, signIn }}>{children}</AuthContext>;
+  // Redirect through Cognito's logout endpoint rather than only dropping the local user: clearing
+  // local storage alone leaves the Hosted-UI session cookie, so the next sign-in would silently
+  // re-authenticate the same person. This is what `post_logout_redirect_uri` above is for.
+  const signOut = useCallback(() => {
+    void userManager.signoutRedirect();
+  }, []);
+
+  return (
+    <AuthContext value={{ state, handleUnauthorized, signIn, signOut }}>{children}</AuthContext>
+  );
 }

@@ -5,7 +5,6 @@ const mockUser = {
   sub: 'local-dev',
   email: 'dev@localhost',
   name: 'Local Dev',
-  picture: '',
 };
 
 /** Immediately authenticated with a mock user. For local development only. */
@@ -20,6 +19,7 @@ export function LocalAuthProvider({ children }: { children: ReactNode }) {
         },
         handleUnauthorized: () => undefined,
         signIn: () => undefined,
+        signOut: () => undefined,
       }}
     >
       {children}

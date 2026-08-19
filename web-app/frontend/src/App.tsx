@@ -1,22 +1,14 @@
-import { Box, Button, Group, SimpleGrid, Stack, Text, Title } from '@mantine/core';
+import { Box, Button, Group, Stack, Text, Title } from '@mantine/core';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from './api.ts';
 import heroImg from './assets/hero.png';
-import reactLogo from './assets/react.svg';
-import viteLogo from './assets/vite.svg';
+import type { AuthUser } from './AuthContext.tsx';
 import { SignInWall } from './SignInWall.tsx';
 import { useAuth } from './useAuth.tsx';
 import classes from './App.module.css';
 
-const socialLinks = [
-  { label: 'GitHub', href: 'https://github.com/vitejs/vite', icon: 'github-icon' },
-  { label: 'Discord', href: 'https://chat.vite.dev/', icon: 'discord-icon' },
-  { label: 'X.com', href: 'https://x.com/vite_js', icon: 'x-icon' },
-  { label: 'Bluesky', href: 'https://bsky.app/profile/vite.dev', icon: 'bluesky-icon' },
-];
-
-function AppContent({ token }: { token: string }) {
-  const { handleUnauthorized } = useAuth();
+function AppContent({ token, user }: { token: string; user: AuthUser }) {
+  const { handleUnauthorized, signOut } = useAuth();
   const [count, setCount] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -82,106 +74,37 @@ function AppContent({ token }: { token: string }) {
   }
 
   return (
-    <>
-      <Box className={classes.center}>
-        <div className={classes.hero}>
-          <img src={heroImg} className={classes.base} width="170" height="179" alt="" />
-          <img src={reactLogo} className={classes.framework} alt="React logo" />
-          <img src={viteLogo} className={classes.vite} alt="Vite logo" />
-        </div>
-        <Stack align="center" gap="md">
-          <Title order={1} className={classes.count}>
-            {count ?? '…'}
-          </Title>
-          <Group justify="center" gap="xs">
-            <Button
-              variant="light"
-              size="md"
-              aria-label="Decrement"
-              onClick={() => void decrement()}
-            >
-              −
-            </Button>
-            <Button
-              variant="light"
-              size="md"
-              aria-label="Increment"
-              onClick={() => void increment()}
-            >
-              +
-            </Button>
-          </Group>
-          {error !== null && (
-            <Text c="red" size="sm">
-              Failed to reach the API: {error}
-            </Text>
-          )}
-        </Stack>
-      </Box>
-
-      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing={0} className={classes.nextSteps}>
-        <Box className={classes.section}>
-          <svg className={classes.sectionIcon} role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon" />
-          </svg>
-          <Title order={2} mb={4}>
-            Documentation
-          </Title>
-          <Text c="dimmed">Your questions, answered</Text>
-          <Group gap="xs" mt="md">
-            <Button
-              component="a"
-              href="https://vite.dev/"
-              target="_blank"
-              rel="noreferrer"
-              variant="default"
-              leftSection={<img className={classes.linkIcon} src={viteLogo} alt="" />}
-            >
-              Explore Vite
-            </Button>
-            <Button
-              component="a"
-              href="https://react.dev/"
-              target="_blank"
-              rel="noreferrer"
-              variant="default"
-              leftSection={<img className={classes.linkIcon} src={reactLogo} alt="" />}
-            >
-              Learn more
-            </Button>
-          </Group>
-        </Box>
-
-        <Box className={classes.section}>
-          <svg className={classes.sectionIcon} role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon" />
-          </svg>
-          <Title order={2} mb={4}>
-            Connect with us
-          </Title>
-          <Text c="dimmed">Join the Vite community</Text>
-          <Group gap="xs" mt="md">
-            {socialLinks.map(({ label, href, icon }) => (
-              <Button
-                key={label}
-                component="a"
-                href={href}
-                target="_blank"
-                rel="noreferrer"
-                variant="default"
-                leftSection={
-                  <svg className={classes.linkIcon} role="presentation" aria-hidden="true">
-                    <use href={`/icons.svg#${icon}`} />
-                  </svg>
-                }
-              >
-                {label}
-              </Button>
-            ))}
-          </Group>
-        </Box>
-      </SimpleGrid>
-    </>
+    <Box className={classes.center}>
+      <div className={classes.hero}>
+        <img src={heroImg} className={classes.base} width="170" height="179" alt="" />
+      </div>
+      <Stack align="center" gap="md">
+        <Title order={1} className={classes.count}>
+          {count ?? '…'}
+        </Title>
+        <Group justify="center" gap="xs">
+          <Button variant="light" size="md" aria-label="Decrement" onClick={() => void decrement()}>
+            −
+          </Button>
+          <Button variant="light" size="md" aria-label="Increment" onClick={() => void increment()}>
+            +
+          </Button>
+        </Group>
+        {error !== null && (
+          <Text c="red" size="sm">
+            Failed to reach the API: {error}
+          </Text>
+        )}
+        <Group gap="xs" mt="xl">
+          <Text c="dimmed" size="sm">
+            {user.email}
+          </Text>
+          <Button variant="subtle" size="compact-sm" onClick={signOut}>
+            Sign out
+          </Button>
+        </Group>
+      </Stack>
+    </Box>
   );
 }
 
@@ -194,7 +117,7 @@ function App() {
   if (state.status === 'unauthenticated') {
     return <SignInWall />;
   }
-  return <AppContent token={state.token} />;
+  return <AppContent token={state.token} user={state.user} />;
 }
 
 export default App;
