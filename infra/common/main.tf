@@ -28,20 +28,25 @@ locals {
   # every environment (one repo, one Actions pipeline), so a flavor constant,
   # NOT part of the per-environment config. Used for the `github` provider owner
   # and Terraform state prefixes.
-  gh_organization_name   = "medusa-software-hq"
-  gh_repo_name           = "counter-aws"
-  gh_default_branch_name = "trunk/aws" # 🎨 TEMPLATE EJECT: Change the default branch
+  gh_organization_name   = "medusa-software-hq" # 🎨 TEMPLATE EJECT: Change to your GitHub org
+  gh_repo_name           = "counter-aws"        # 🎨 TEMPLATE EJECT: Change to your repository
+  gh_default_branch_name = "trunk/aws"          # 🎨 TEMPLATE EJECT: Change the default branch
 
   # The releases repo the CLI publishes its fat jar to (provisioned by the root
   # infra), and the GitHub App the Publish CLI workflow authenticates as to push
   # releases + the Homebrew formula. Flavor constants — one app, one releases
   # repo, shared across environments.
-  gh_releases_repo_name = "counter-aws-releases"
+  gh_releases_repo_name = "counter-aws-releases" # 🎨 TEMPLATE EJECT: Change to your releases repo
   # 🎨 TEMPLATE POST-EJECT: Create a GitHub App and change its client id here 👇
   gh_releases_client_id = "Iv23ct4SGbvxYw9pxJs8" # "Medusa Counter Releaser"
 
-  aws_primary_location = "eu-central-1"
-  aws_account_id       = "682544514886"
+  # Short organization name, for globally-unique names that can't carry the resource prefix (the
+  # Cognito Hosted-UI domain: AWS reserves aws/amazon/cognito, and this variant's prefix contains
+  # "aws").
+  organization_name = "medusa" # 🎨 TEMPLATE EJECT: Change to your organization's short name
+
+  aws_primary_location = "eu-central-1" # 🎨 TEMPLATE EJECT: Change to your primary region
+  aws_account_id       = "682544514886" # 🎨 TEMPLATE EJECT: Change to your AWS account id
 
   # Shared AWS state bucket — provisioned by the meta repo, keyed per repo.
   # Counter keys under `projects/<base>/<variant>/`. Also hard-coded in the
@@ -70,6 +75,10 @@ locals {
 
 output "organization_domain" {
   value = local.organization_domain
+}
+
+output "organization_name" {
+  value = local.organization_name
 }
 
 output "gh_organization_name" {

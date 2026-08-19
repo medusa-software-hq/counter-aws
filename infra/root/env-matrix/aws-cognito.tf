@@ -10,6 +10,8 @@
 
 # IdC SAML application metadata URL, per environment — each pool federates to its own IdC app,
 # created with `automaton aws saml create`.
+# 🎨 TEMPLATE POST-EJECT: Create a SAML application per environment (see "Adding an environment" in
+# the infra README) and replace these URLs with the ones IdC returns 👇
 variable "idc_saml_metadata_urls" {
   description = "IdC SAML application metadata URL per environment."
   type        = map(string)
@@ -26,8 +28,8 @@ locals {
 
   # Hosted-UI domain prefix. It must be globally unique and must NOT contain the
   # reserved words aws/amazon/cognito — so it cannot be derived from the
-  # `counter-aws` resource prefix; use the org name + account id instead.
-  cognito_domain_prefix = "medusa-counter${module.common.resource_name_suffix}-${module.common.aws_account_id}"
+  # `counter-aws` resource prefix; use the org + project name and account id instead.
+  cognito_domain_prefix = "${module.common.organization_name}-${module.common.project_base_name}${module.common.resource_name_suffix}-${module.common.aws_account_id}"
 
   saml_provider_name = "IdC"
   # Federated users get their identities only from IdC; the pool itself is never an identity source.

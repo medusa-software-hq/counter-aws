@@ -3,6 +3,7 @@
 terraform {
   required_version = ">= 1.14"
 
+  # 🎨 TEMPLATE EJECT: Change the state bucket + prefix (backends take no variables)
   backend "gcs" {
     bucket = "ms-tfstate-c1984596bdabf023"
     prefix = "repos/counter-aws"
