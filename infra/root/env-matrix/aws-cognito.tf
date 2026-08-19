@@ -3,18 +3,15 @@
 # Cognito-issued JWT (issuer + audience below). Per environment (prod/staging
 # each get their own pool), operator-applied with the rest of the root infra.
 #
-# Federation is wired in two steps because the SAML trust is bidirectional and half of it is a console
-# action: this pool + its Hosted-UI domain exist first (they define the ACS URL + SP entity id the IdC
-# SAML application points at — the `cognito_saml_*` outputs), then the app is created (with
-# `automaton aws saml create`) and IdC emits its metadata URL, which goes into `idc_saml_metadata_urls`
-# below to wire the trust on a re-apply. Empty for that environment until then.
+# The SAML trust is bidirectional and the IdC half is a console action, so *standing up a new
+# environment* takes two passes — see "Adding an environment" in the README. Every environment that
+# exists is past that: an environment with no metadata URL below fails the plan rather than applying
+# a pool that cannot federate.
 
-# IdC SAML application metadata URL, per environment — each pool federates to its own IdC app. Empty
-# for an environment whose app doesn't exist yet: the pool applies with a COGNITO fallback IdP, which
-# defines the SP entity id + ACS URL the app is created against (see the header); fill the URL in and
-# re-apply to wire the trust. The apps are created with `automaton aws saml create`.
+# IdC SAML application metadata URL, per environment — each pool federates to its own IdC app,
+# created with `automaton aws saml create`.
 variable "idc_saml_metadata_urls" {
-  description = "IdC SAML application metadata URL per environment (empty until the app exists)."
+  description = "IdC SAML application metadata URL per environment."
   type        = map(string)
   default = {
     prod    = "https://portal.sso.eu-central-1.amazonaws.com/saml/metadata/NjgyNTQ0NTE0ODg2X2lucy02OTg3MzUyNzdhNzdjOGU3"
@@ -25,18 +22,16 @@ variable "idc_saml_metadata_urls" {
 locals {
   cognito_name = "${module.common.aws_resource_prefix}${module.common.resource_name_suffix}"
 
-  idc_saml_metadata_url = lookup(var.idc_saml_metadata_urls, module.common.environment, "")
+  idc_saml_metadata_url = var.idc_saml_metadata_urls[module.common.environment]
 
   # Hosted-UI domain prefix. It must be globally unique and must NOT contain the
   # reserved words aws/amazon/cognito — so it cannot be derived from the
   # `counter-aws` resource prefix; use the org name + account id instead.
   cognito_domain_prefix = "medusa-counter${module.common.resource_name_suffix}-${module.common.aws_account_id}"
 
-  saml_enabled       = local.idc_saml_metadata_url != ""
   saml_provider_name = "IdC"
-  # Federated users get identities only from IdC; before that trust exists the
-  # pool has no usable IdP, so fall back to COGNITO to keep the clients valid.
-  identity_providers = local.saml_enabled ? [local.saml_provider_name] : ["COGNITO"]
+  # Federated users get their identities only from IdC; the pool itself is never an identity source.
+  identity_providers = [local.saml_provider_name]
 
   web_url = "https://${module.common.web_host_name}"
 }
@@ -75,11 +70,8 @@ resource "aws_cognito_user_pool_domain" "main" {
   user_pool_id = aws_cognito_user_pool.main.id
 }
 
-# SAML federation to IdC. Gated on the metadata URL so the pool applies before
-# the IdC application exists; setting the variable later wires the trust.
+# SAML federation to IdC.
 resource "aws_cognito_identity_provider" "idc" {
-  count = local.saml_enabled ? 1 : 0
-
   user_pool_id  = aws_cognito_user_pool.main.id
   provider_name = local.saml_provider_name
   provider_type = "SAML"
@@ -177,4 +169,10 @@ output "cognito_saml_sp_entity_id" {
 output "cognito_saml_acs_url" {
   description = "SAML assertion consumer service URL for the IdC application."
   value       = "https://${aws_cognito_user_pool_domain.main.domain}.auth.${module.common.aws_primary_location}.amazoncognito.com/saml2/idpresponse"
+}
+
+# The IdP used to be gated on the metadata URL being non-empty, which made it a counted resource.
+moved {
+  from = aws_cognito_identity_provider.idc[0]
+  to   = aws_cognito_identity_provider.idc
 }
