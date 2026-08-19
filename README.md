@@ -67,20 +67,25 @@ plaintext configuration. Local runs and tests swap in an in-memory store.
 
 Everything is **Terraform**, split by concern rather than one root module, with state in **S3**:
 
-- `infra/` — the CI/CD role (assumed by GitHub Actions via OIDC) and other account-level setup
+- `infra/root/shared/` — account-level setup that exists once: the CI/CD role assumed by GitHub
+  Actions via OIDC, and the CLI's releases repository
+- `infra/root/env-matrix/` — the per-environment identity plane (Cognito user pool, its app clients,
+  and the SAML federation to IAM Identity Center), one Terraform workspace per environment
 - `backend/infra/foundation/` — the Lambda, API Gateway HTTP API, Cognito JWT authorizer, Neon
-  project, and the Secrets Manager secret
-- `web-app/infra/foundation/` — the S3 bucket and CloudFront distribution
-- `*/infra/domain-mapping/` — the public DNS records (Cloudflare)
+  project, the Secrets Manager secret, and the API's custom domain
+- `web-app/infra/foundation/` — the S3 bucket, CloudFront distribution, and the web custom domain
 
 Shared values (project name, domains, per-environment hosts) live in `infra/config` and are emitted to
 a single `config.json` that every consumer reads, so they stay in sync.
 
 ### Delivery
 
-GitHub Actions validate every change and deploy on merge to the trunk branch: one workflow builds the
-native backend and applies the API infrastructure; another builds the SPA and publishes it to S3 +
-CloudFront.
+GitHub Actions validate every change and deploy on merge to the trunk branch. Each deploy is phased:
+build the artifact once, apply it to **staging**, test staging, then promote the same artifact to
+**production** — the phases are chained so a failed staging apply or test stops the promotion. One
+workflow covers the native backend, another the SPA.
+
+Environments map to Terraform workspaces: production is `default`, staging is `staging`.
 
 ## Template
 

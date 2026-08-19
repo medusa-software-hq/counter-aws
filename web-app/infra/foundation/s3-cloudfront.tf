@@ -8,13 +8,11 @@ locals {
   # via the suffix; the account id keeps it unique across accounts.
   spa_bucket_name = "${module.common.aws_resource_prefix}-web${module.common.resource_name_suffix}-${module.common.aws_account_id}"
 
-  # The API Gateway endpoint, as a bare host for a CloudFront origin (no scheme). The `try` reads the
-  # new output but falls back to the old function-URL output during the cross-state transition, so
-  # this foundation never fails if it applies before the API foundation republishes.
-  api_origin_host = replace(trimsuffix(try(data.terraform_remote_state.api.outputs.api_endpoint, data.terraform_remote_state.api.outputs.api_function_url), "/"), "https://", "")
+  # The API Gateway endpoint, as a bare host for a CloudFront origin (no scheme).
+  api_origin_host = replace(trimsuffix(data.terraform_remote_state.api.outputs.api_endpoint, "/"), "https://", "")
 }
 
-# The API lives in its own Terraform state; read its function URL from there.
+# The API lives in its own Terraform state; read its endpoint from there.
 data "terraform_remote_state" "api" {
   backend = "s3"
 

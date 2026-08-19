@@ -121,7 +121,7 @@ resource "github_actions_repository_permissions" "this" {
 }
 
 # Deployment environments for the prod/staging split. Each holds the
-# environment-scoped CI/CD variables (GCP project id, API URL, CI/CD SA, …) that
+# environment-scoped CI/CD variables (API URL, Cognito issuer and client ids, …) that
 # distinguish a staging deploy from a prod one; a workflow job's `environment:`
 # is what makes its `vars.*` resolve to that environment's values. Required
 # reviewers are Enterprise-only for private repos, so the promotion gate is a

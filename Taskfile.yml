@@ -17,10 +17,6 @@ includes:
     taskfile: web-app/infra/foundation/Taskfile.yml
     dir: web-app/infra/foundation
 
-  web-app:infra:domain-mapping:
-    taskfile: web-app/infra/domain-mapping/Taskfile.yml
-    dir: web-app/infra/domain-mapping
-
   api:impl:
     taskfile: backend/api/Taskfile.yml
     dir: backend/api
@@ -28,10 +24,6 @@ includes:
   api:infra:foundation:
     taskfile: backend/infra/foundation/Taskfile.yml
     dir: backend/infra/foundation
-
-  api:infra:domain-mapping:
-    taskfile: backend/infra/domain-mapping/Taskfile.yml
-    dir: backend/infra/domain-mapping
 
   cli:
     taskfile: cli/Taskfile.yml
@@ -65,10 +57,8 @@ tasks:
       - config:fmt:check
       - web-app:fmt:check
       - web-app:infra:foundation:fmt:check
-      - web-app:infra:domain-mapping:fmt:check
       - api:impl:fmt:check
       - api:infra:foundation:fmt:check
-      - api:infra:domain-mapping:fmt:check
       - cli:fmt:check
 
   all:fmt:fix:
@@ -79,10 +69,8 @@ tasks:
       - config:fmt:fix
       - web-app:fmt:fix
       - web-app:infra:foundation:fmt:fix
-      - web-app:infra:domain-mapping:fmt:fix
       - api:impl:fmt:fix
       - api:infra:foundation:fmt:fix
-      - api:infra:domain-mapping:fmt:fix
       - cli:fmt:fix
 
   all:lint:
@@ -93,10 +81,8 @@ tasks:
       - config:lint
       - web-app:lint
       - web-app:infra:foundation:lint
-      - web-app:infra:domain-mapping:lint
       - api:impl:lint
       - api:infra:foundation:lint
-      - api:infra:domain-mapping:lint
       - cli:lint
 
   all:analyze:
@@ -107,9 +93,7 @@ tasks:
       - config:check
       - web-app:analyze
       - web-app:infra:foundation:validate
-      - web-app:infra:domain-mapping:validate
       - api:infra:foundation:validate
-      - api:infra:domain-mapping:validate
       - cli:build
       - cli:test
 

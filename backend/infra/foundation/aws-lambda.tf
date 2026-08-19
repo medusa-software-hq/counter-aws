@@ -71,8 +71,8 @@ resource "aws_lambda_function" "api" {
 
 # The API is fronted by an API Gateway HTTP API: a Lambda-proxy integration with payload format 2.0,
 # so the function receives the same APIGatewayV2HTTPEvent it did from the function URL — no handler
-# change. Access control (a Cognito JWT authorizer) lands in a later slice; for now every route is
-# open. CloudFront points its /api behavior at this endpoint (see the web foundation).
+# change. Every route is gated by the Cognito JWT authorizer below. CloudFront points its /api
+# behavior at this endpoint (see the web foundation).
 resource "aws_apigatewayv2_api" "api" {
   name          = "${module.common.aws_resource_prefix}-api${module.common.resource_name_suffix}"
   protocol_type = "HTTP"
