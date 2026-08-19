@@ -85,7 +85,8 @@ build the artifact once, apply it to **staging**, test staging, then promote the
 **production** — the phases are chained so a failed staging apply or test stops the promotion. One
 workflow covers the native backend, another the SPA.
 
-Environments map to Terraform workspaces: production is `default`, staging is `staging`.
+Environments map to Terraform workspaces of the same name (`prod`, `staging`). The one exception is
+`infra/root/shared`, which has no environment dimension and runs in Terraform's `default` workspace.
 
 ## Template
 

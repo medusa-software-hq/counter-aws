@@ -6,7 +6,7 @@ terraform {
   # 🎨 TEMPLATE EJECT: Change the state bucket + key (backends take no variables)
   backend "s3" {
     bucket       = "ms-tfstate-aws-682544514886"
-    key          = "projects/counter/aws/apps/web/foundation/terraform.tfstate"
+    key          = "projects/counter/aws/web-app/foundation/terraform.tfstate"
     region       = "eu-central-1"
     encrypt      = true
     use_lockfile = true
