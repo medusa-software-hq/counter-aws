@@ -11,6 +11,11 @@ on:
 permissions:
   contents: read
 
+# Two runs would race to create the release and rewrite the Homebrew formula.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 env:
   JAVA_VERSION: 21
 
