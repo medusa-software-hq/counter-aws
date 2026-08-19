@@ -15,8 +15,9 @@ import software.medusa.counter.cli.auth.TokenProvider
 
 /**
  * Talks to CounterService over its generated OkHttp REST client. When [tokenProvider] yields a
- * token it is attached as an `Authorization: Bearer` header on every request (the backend runs
- * no-op auth for now, so a missing token is fine). The CLI uses one client per command.
+ * token it is attached as an `Authorization: Bearer` header on every request (the local backend
+ * runs open, so a missing token is fine there; prod and staging reject with a 401). The CLI uses
+ * one client per command.
  */
 class CounterApiClient(endpoint: ApiEndpoint, tokenProvider: TokenProvider) : AutoCloseable {
   private val httpClient: OkHttpClient =

@@ -89,8 +89,8 @@ graalvmNative {
 tasks.named<NativeImageDockerfile>("dockerfileNative") { jdkVersion = "21" }
 
 // --- Contract-first code generation ------------------------------------------------------------
-// Fabrikt runs in its own classpath (JavaExec) rather than as a Gradle plugin: the plugin shares
-// the buildscript classpath with jib/protobuf, whose older Jackson breaks Fabrikt's YAML parser.
+// Fabrikt runs in its own classpath (JavaExec) rather than as a Gradle plugin: as a plugin it would
+// share the buildscript classpath, where a competing Jackson version breaks its YAML parser.
 val fabrikt: Configuration by configurations.creating
 
 val openApiSpec = rootProject.file("backend/api/openapi/counter.yaml")

@@ -37,10 +37,10 @@ jobs:
         working-directory: backend/infra/foundation
         run: tflint --recursive
 
-      # No GCP auth / plan here on purpose: post prod/staging split the CI/CD
-      # identity and project id are environment-scoped (trunk-gated), so a PR
-      # can't authenticate to plan. Validate catches configuration errors; the
-      # real plan+apply happens per environment on trunk (see Apply API infra).
+      # No cloud auth / plan here on purpose: the CI/CD identity is
+      # environment-scoped (trunk-gated), so a PR can't authenticate to plan.
+      # Validate catches configuration errors; the real plan+apply happens per
+      # environment on trunk (see Deploy API).
       - name: Validate Terraform configuration
         working-directory: backend/infra/foundation
         run: |
