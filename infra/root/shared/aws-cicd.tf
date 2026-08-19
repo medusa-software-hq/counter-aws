@@ -7,8 +7,26 @@ data "aws_iam_openid_connect_provider" "github" {
 locals {
   aws_state_bucket_arn = "arn:aws:s3:::${module.common.aws_state_bucket_name}"
   # Counter's state lives under this prefix (and under env:/<workspace>/… for
-  # non-default workspaces of the env-matrix root).
+  # non-default workspaces).
   aws_state_prefix = "projects/${module.common.project_base_name}/${module.common.project_variant}"
+
+  # CI/CD applies only the two app foundations, so it reaches only their state —
+  # not root/shared or root/env-matrix, which the operator applies. root/shared
+  # is what defines this very role, so letting CI write it would make the role
+  # able to widen itself.
+  aws_cicd_state_prefixes = [
+    "${local.aws_state_prefix}/api/foundation",
+    "${local.aws_state_prefix}/apps/web/foundation",
+  ]
+  aws_cicd_state_object_arns = flatten([
+    for prefix in local.aws_cicd_state_prefixes : [
+      "${local.aws_state_bucket_arn}/${prefix}/*",
+      "${local.aws_state_bucket_arn}/env:/*/${prefix}/*",
+    ]
+  ])
+  aws_cicd_state_list_prefixes = flatten([
+    for prefix in local.aws_cicd_state_prefixes : ["${prefix}/*", "env:/*/${prefix}/*"]
+  ])
 }
 
 # Role GitHub Actions assumes via OIDC to deploy this variant, scoped to the repo.
@@ -38,11 +56,10 @@ resource "aws_iam_role" "cicd" {
   })
 }
 
-# What CI/CD may do today: read/write this variant's Terraform state (its prefix
-# in the shared bucket) and push container images. Service permissions (Lambda,
-# CloudFront, …) are added by the issues that introduce those services.
+# What CI/CD may do today: read/write the Terraform state of the two foundations
+# it applies, plus the service permissions those foundations need.
 resource "aws_iam_role_policy" "cicd" {
-  name = "state-and-ecr"
+  name = "state-and-services"
   role = aws_iam_role.cicd.id
 
   policy = jsonencode({
@@ -54,38 +71,14 @@ resource "aws_iam_role_policy" "cicd" {
         Action   = "s3:ListBucket"
         Resource = local.aws_state_bucket_arn
         Condition = {
-          StringLike = { "s3:prefix" = ["${local.aws_state_prefix}/*", "env:/*/${local.aws_state_prefix}/*"] }
+          StringLike = { "s3:prefix" = local.aws_cicd_state_list_prefixes }
         }
       },
       {
-        Sid    = "TerraformStateObjects"
-        Effect = "Allow"
-        Action = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
-        Resource = [
-          "${local.aws_state_bucket_arn}/${local.aws_state_prefix}/*",
-          "${local.aws_state_bucket_arn}/env:/*/${local.aws_state_prefix}/*",
-        ]
-      },
-      {
-        Sid      = "EcrAuth"
+        Sid      = "TerraformStateObjects"
         Effect   = "Allow"
-        Action   = "ecr:GetAuthorizationToken"
-        Resource = "*"
-      },
-      {
-        Sid    = "EcrPushPull"
-        Effect = "Allow"
-        Action = [
-          "ecr:BatchCheckLayerAvailability",
-          "ecr:GetDownloadUrlForLayer",
-          "ecr:BatchGetImage",
-          "ecr:PutImage",
-          "ecr:InitiateLayerUpload",
-          "ecr:UploadLayerPart",
-          "ecr:CompleteLayerUpload",
-          "ecr:DescribeRepositories",
-        ]
-        Resource = "arn:aws:ecr:${module.common.aws_primary_location}:${module.common.aws_account_id}:repository/${module.common.aws_resource_prefix}-*"
+        Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+        Resource = local.aws_cicd_state_object_arns
       },
       {
         # Apply the API foundation from CI: manage this variant's Lambda + URL.
@@ -95,10 +88,11 @@ resource "aws_iam_role_policy" "cicd" {
         Resource = "arn:aws:lambda:${module.common.aws_primary_location}:${module.common.aws_account_id}:function:${module.common.aws_resource_prefix}-*"
       },
       {
-        # Apply the API foundation from CI: manage this variant's API Gateway HTTP API. Creating an
-        # API is apigateway:POST on the collection ARN (/apis); everything else (routes, integration,
-        # authorizer, stage, tags) lives under the API's own ARN (/apis/*). The custom domain and its
-        # API mapping live under a separate collection (/domainnames).
+        # Apply the API foundation from CI. Creating an API is apigateway:POST on the collection ARN
+        # (/apis); everything else (routes, integration, authorizer, stage, tags) lives under the
+        # API's own ARN. An API's ARN carries its generated id, not its name, so /apis/* cannot be
+        # narrowed to this variant. Custom domains are a separate collection and *are* named, so
+        # they are scoped to this variant's hosts across environments (api.<project>-<variant>…).
         Sid    = "ApiGatewayManage"
         Effect = "Allow"
         Action = "apigateway:*"
@@ -106,7 +100,7 @@ resource "aws_iam_role_policy" "cicd" {
           "arn:aws:apigateway:${module.common.aws_primary_location}::/apis",
           "arn:aws:apigateway:${module.common.aws_primary_location}::/apis/*",
           "arn:aws:apigateway:${module.common.aws_primary_location}::/domainnames",
-          "arn:aws:apigateway:${module.common.aws_primary_location}::/domainnames/*",
+          "arn:aws:apigateway:${module.common.aws_primary_location}::/domainnames/api.${module.common.project_base_name}-${module.common.project_variant}*",
         ]
       },
       {
