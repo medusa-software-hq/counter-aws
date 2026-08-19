@@ -18,8 +18,14 @@ on:
   workflow_dispatch:
 
 permissions:
-  id-token: write # assume the CI/CD role via OIDC
   contents: read
+
+# `needs:` only orders jobs inside one run. Two pushes (or a push racing a manual dispatch) would
+# otherwise apply the same workspace concurrently; queue them instead of cancelling, so a deploy
+# already touching infrastructure always finishes.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
 
 env:
   AWS_REGION: eu-central-1
@@ -33,6 +39,9 @@ jobs:
     name: Deploy staging
     runs-on: ubuntu-latest
     environment: staging
+    permissions:
+      id-token: write # assume the CI/CD role via OIDC
+      contents: read
     steps:
       - uses: actions/checkout@v6
       - uses: aws-actions/configure-aws-credentials@v4
@@ -95,6 +104,9 @@ jobs:
     needs: test-staging
     runs-on: ubuntu-latest
     environment: production
+    permissions:
+      id-token: write # assume the CI/CD role via OIDC
+      contents: read
     steps:
       - uses: actions/checkout@v6
       - uses: aws-actions/configure-aws-credentials@v4

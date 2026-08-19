@@ -18,17 +18,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v6.0.2
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v6.3.0
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: yarn
           cache-dependency-path: ${{ env.FRONTEND_PATH }}/yarn.lock
-
-      - uses: bufbuild/buf-action@v1.4.0
-        with:
-          setup_only: true
 
       - uses: go-task/setup-task@v2
 

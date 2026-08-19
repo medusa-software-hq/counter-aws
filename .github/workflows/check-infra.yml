@@ -36,3 +36,13 @@ jobs:
       - name: Lint Terraform configuration
         working-directory: infra
         run: tflint --recursive
+
+      # `terraform fmt`/`tflint` are syntactic; only `validate` catches a bad reference or a wrong
+      # argument. The two root configurations are checked here because no other workflow does it —
+      # `infra/config` has its own (Check config), as do both app foundations.
+      - name: Validate Terraform configuration
+        run: |
+          for root in infra/root/shared infra/root/env-matrix; do
+            terraform -chdir="$root" init -backend=false
+            terraform -chdir="$root" validate
+          done
