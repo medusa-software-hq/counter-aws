@@ -58,10 +58,11 @@ resource "aws_lambda_function" "api" {
   # Headroom for a cold start that may also have to wake the serverless database.
   timeout = 30
 
-  # A ceiling on simultaneous executions, so a runaway caller cannot scale this into a large compute
-  # bill. It reserves the capacity from the account pool as well, so the two environments cannot
-  # starve each other. Requests beyond it are rejected rather than queued.
-  reserved_concurrent_executions = 3
+  # No reserved concurrency: AWS refuses a reservation that would leave the account with fewer than
+  # ten unreserved executions, and this account's whole limit is ten. That limit is itself the
+  # ceiling, shared by both environments — one can starve the other. Raising the account quota is
+  # what would make a per-function reservation possible; the request rate is bounded on the stage
+  # instead, which is the control that actually bounds spend.
 
   # The Lambda fetches the Neon connection string from Secrets Manager itself (Lambda has no
   # secret-to-env mapping), so the DB password never sits in the function's plaintext config.
