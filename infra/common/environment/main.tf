@@ -2,13 +2,20 @@ terraform {
   required_version = ">= 1.14"
 }
 
+# infra/config is the single source; read it directly rather than the config.json it emits, so a
+# regeneration that has not been run yet cannot make Terraform plan against stale values. The JSON
+# exists for consumers that cannot run Terraform.
+module "config" {
+  source = "../../config"
+}
+
 locals {
   # The deployment environment IS the Terraform workspace — no default, so a root that forgot to
   # select one fails here rather than silently operating on another environment. Roots with no
   # environment dimension import the global module instead of this one.
   name = terraform.workspace
 
-  config     = jsondecode(file("${path.module}/../../config/config.json"))
+  config     = module.config.config
   env_config = local.config.environments[local.name]
 
   gh_environment_name  = local.env_config.gh_environment_name

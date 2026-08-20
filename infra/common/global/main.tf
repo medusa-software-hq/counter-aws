@@ -2,11 +2,18 @@ terraform {
   required_version = ">= 1.14"
 }
 
+# infra/config is the single source; read it directly rather than the config.json it emits, so a
+# regeneration that has not been run yet cannot make Terraform plan against stale values. The JSON
+# exists for consumers that cannot run Terraform.
+module "config" {
+  source = "../../config"
+}
+
 locals {
   # The deployment values that must stay identical between Terraform and the built artifacts (the
   # CLI) live once in infra/config and are read here from its emitted config.json, so neither side
   # can hardcode them independently and drift.
-  config = jsondecode(file("${path.module}/../../config/config.json"))
+  config = module.config.config
 
   project_base_name   = local.config.project
   project_variant     = local.config.variant
