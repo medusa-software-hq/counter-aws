@@ -7,9 +7,9 @@ import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueReques
 
 /**
  * The custom runtime's event loop over the API Gateway v2 payload, with the application context
- * configured explicitly: the store is built here and handed in, rather than discovered.
+ * configured explicitly and the controller supplied rather than discovered.
  */
-class CounterLambdaRuntime(private val store: CounterStore) :
+class CounterLambdaRuntime(private val controller: CounterController) :
     APIGatewayV2HTTPEventMicronautLambdaRuntime() {
 
   override fun createApplicationContextBuilderWithArgs(
@@ -23,7 +23,9 @@ class CounterLambdaRuntime(private val store: CounterStore) :
           // Build what the context needs during initialization, so a broken configuration fails the
           // cold start rather than whichever request arrives first.
           .eagerInitSingletons(true)
-          .singletons(store)
+          // The controller is supplied, not discovered; its routes still come from the compile-time
+          // metadata on the class, but the instance they reach is this one.
+          .singletons(controller)
 }
 
 /** The connection string, from the Secrets Manager secret whose ARN the function is given. */
@@ -38,5 +40,6 @@ private fun readDatabaseUrl(): String {
 }
 
 fun main(args: Array<String>) {
-  CounterLambdaRuntime(PostgresCounterStore.build(readDatabaseUrl())).run(*args)
+  val store = PostgresCounterStore.build(readDatabaseUrl())
+  CounterLambdaRuntime(CounterController(store)).run(*args)
 }

@@ -27,9 +27,11 @@ class CounterHandlerTest {
   fun `get, increment and decrement round-trip through the payload-v2 handler`() {
     // Built the way the runtime builds it: the store is handed in, not discovered, so this covers
     // the wiring production actually uses.
+    // Built the way the runtime builds it. Nothing registers a store, so a discovered controller
+    // could not be constructed — a passing round-trip can only be reaching the instance built here.
     val context =
         ApplicationContext.builder()
-            .singletons(InMemoryCounterStore())
+            .singletons(CounterController(InMemoryCounterStore()))
             .eagerInitSingletons(true)
             .start()
     val handler = APIGatewayV2HTTPEventFunction(context)
