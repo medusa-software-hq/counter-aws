@@ -82,9 +82,8 @@ resource "aws_cognito_identity_provider" "idc" {
     IDPSignout  = "true"
   }
 
-  # Left of `=` is the pool attribute, right is the SAML assertion attribute the IdC application
-  # emits.
   attribute_mapping = {
+    # Pool attribute = the assertion attribute the IdC application emits.
     email = "email"
   }
 
@@ -139,8 +138,7 @@ resource "aws_cognito_user_pool_client" "cli" {
   depends_on = [aws_cognito_identity_provider.idc]
 }
 
-# Identity config surfaced to the app builds as per-environment Actions variables; the SPA login,
-# the API's JWT verifier and the CLI login all read it from there.
+# The identity values the app builds read, surfaced as Actions variables.
 resource "github_actions_environment_variable" "cognito" {
   for_each = {
     COGNITO_ISSUER_URL    = "https://cognito-idp.${module.common.aws_primary_location}.amazonaws.com/${aws_cognito_user_pool.main.id}"

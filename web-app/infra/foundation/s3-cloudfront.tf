@@ -132,7 +132,7 @@ resource "aws_cloudfront_distribution" "spa" {
     compress               = false
     # AWS-managed "CachingDisabled".
     cache_policy_id = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
-    # AWS-managed "AllViewerExceptHostHeader": forward everything (incl. the future
+    # AWS-managed "AllViewerExceptHostHeader": forward everything (incl. the
     # Authorization header) but let CloudFront set the Host so SigV4 signing matches
     # the API.
     origin_request_policy_id = "b689b0a8-53d0-40ab-baf2-68738e2966ac"

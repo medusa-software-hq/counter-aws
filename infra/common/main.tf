@@ -22,8 +22,8 @@ locals {
   gh_environment_name  = local.selected_env_config.gh_environment_name
   resource_name_suffix = local.selected_env_config.resource_name_suffix
 
-  # The GitHub org + repo that holds the code and runs CI/CD — the SAME for every environment (one
-  # repo, one Actions pipeline), so a flavor constant, NOT part of the per-environment config.
+  # One repo and one Actions pipeline serve every environment, so these are flavor constants rather
+  # than per-environment config.
   gh_organization_name   = "medusa-software-hq" # 🎨 TEMPLATE EJECT: Change to your GitHub org
   gh_repo_name           = "counter-aws"        # 🎨 TEMPLATE EJECT: Change to your repository
   gh_default_branch_name = "trunk/aws"          # 🎨 TEMPLATE EJECT: Change the default branch
@@ -55,8 +55,6 @@ locals {
   # hosts themselves come straight from config.json (below).
   subdomain_label = "${local.project_base_name}-${local.project_variant}${local.resource_name_suffix}"
 
-  # The public hosts, from config.json — sourced from the single config so no consumer drifts from
-  # the deployed subdomain.
   api_subdomain_name = "api.${local.subdomain_label}"
   api_host_name      = local.selected_env_config.api_host
 

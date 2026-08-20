@@ -6,10 +6,11 @@ import software.medusa.counter.db.CounterDatabase
 
 private const val counterId = "main"
 
-// The shared counter, persisted in one Postgres row (Neon) through SQLDelight's generated,
-// type-safe query layer. The driver is backed by pgjdbc's own non-pooling DataSource: it opens a
-// fresh connection per query, which suits serial, infrequent Lambda invocations and avoids handing
-// out a connection the serverless database closed after an idle scale-to-zero.
+/**
+ * The counter persisted in one Postgres row. The driver is deliberately non-pooling: a fresh
+ * connection per query suits serial, infrequent invocations, and avoids handing out one the
+ * serverless database already closed after an idle scale-to-zero.
+ */
 class PostgresCounterStore private constructor(private val database: CounterDatabase) :
     CounterStore {
 

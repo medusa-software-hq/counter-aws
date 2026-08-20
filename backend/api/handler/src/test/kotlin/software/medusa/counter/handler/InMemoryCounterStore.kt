@@ -4,8 +4,10 @@ import io.micronaut.context.annotation.Replaces
 import jakarta.inject.Singleton
 import java.util.concurrent.atomic.AtomicLong
 
-// Replaces the Postgres-backed store in the handler test so it exercises routing and serialization
-// without a database. The factory's store is what runs in the deployed function.
+/**
+ * Replaces the persistent store in the handler test, so it exercises routing and serialization
+ * without a database.
+ */
 @Singleton
 @Replaces(CounterStore::class)
 class InMemoryCounterStore : CounterStore {

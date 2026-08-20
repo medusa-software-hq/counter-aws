@@ -125,10 +125,9 @@ resource "github_actions_repository_permissions" "this" {
   allowed_actions = "all"
 }
 
-# Deployment environments for the prod/staging split; each scopes that environment's CI/CD
-# variables. Required reviewers are Enterprise-only for private repos, so the promotion gate is a job
-# dependency in the workflows instead — these still earn their keep through deployment tracking,
-# scoped variables and the trunk-only branch policy below.
+# The prod and staging deployment environments — everything GitHub scopes per environment, plus the
+# branch policy below. Required reviewers would be the obvious promotion gate, but they are
+# Enterprise-only for private repositories.
 resource "github_repository_environment" "production" {
   repository  = github_repository.this.name
   environment = "production"
