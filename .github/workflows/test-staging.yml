@@ -1,9 +1,12 @@
 name: Test staging
 
 # Post-deploy checks that gate promotion to production: called by a deploy workflow between its
-# staging and production phases, so production only proceeds if staging is healthy. Black-box checks
-# over the public staging endpoints (no credentials) — what a promotion gate needs. Each caller passes
-# the surface it just deployed via `target`.
+# staging and production phases, so production only proceeds if staging is healthy. Each caller
+# passes the surface it just deployed via `target`.
+#
+# The public endpoints alone cannot tell us the API works: every anonymous request is rejected by the
+# authorizer before it reaches the function, so a function that cannot even start would pass. The API
+# check therefore also invokes it directly, which needs credentials.
 #
 # The checks retry: the first staging deploy of a surface creates its host + Cloudflare DNS record
 # from scratch, which takes a short while to resolve on the runner, so a single request would
@@ -16,8 +19,17 @@ on:
         description: "Which staging surface to check: 'api' or 'web'."
         required: true
         type: string
+      aws-region:
+        description: "Region holding the function, for the 'api' target."
+        required: false
+        type: string
+      aws-role-arn:
+        description: "Role to assume in order to invoke the function, for the 'api' target."
+        required: false
+        type: string
 
 permissions:
+  id-token: write # assume the role that invokes the function
   contents: read
 
 jobs:
@@ -45,6 +57,44 @@ jobs:
             sleep 15
           done
           echo "::error::staging API never returned 401 (last: $code)"
+          exit 1
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        if: inputs.target == 'api'
+        with:
+          role-to-assume: ${{ inputs.aws-role-arn }}
+          aws-region: ${{ inputs.aws-region }}
+
+      - name: Staging API serves a request
+        if: inputs.target == 'api'
+        env:
+          AWS_REGION: ${{ inputs.aws-region }}
+        run: |
+          # Past the authorizer the public endpoint cannot reach, so this is the only check that the
+          # deployed binary starts, reads its configuration and talks to the database.
+          # The payload format the API Gateway integration delivers, for a route the SPA also calls.
+          printf '%s' '{"version":"2.0","rawPath":"/counter/get","requestContext":' > event.json
+          printf '%s' '{"http":{"method":"GET","path":"/counter/get"}}}' >> event.json
+          for attempt in $(seq 1 3); do
+            if aws lambda invoke --function-name counter-aws-api-staging \
+              --cli-binary-format raw-in-base64-out \
+              --payload file://event.json response.json > invoke.json 2>&1; then
+              if grep -q FunctionError invoke.json; then
+                echo "::error::staging function returned an error"; cat invoke.json response.json; exit 1
+              fi
+              status=$(jq -r '.statusCode' response.json)
+              body=$(jq -r '.body' response.json)
+              echo "attempt $attempt: invoke -> $status $body"
+              if [ "$status" = "200" ] && echo "$body" | jq -e 'has("count")' > /dev/null; then
+                exit 0
+              fi
+              echo "::error::staging function answered $status: $body"
+              exit 1
+            fi
+            echo "attempt $attempt: invoke failed"; cat invoke.json || true
+            sleep 15
+          done
+          echo "::error::staging function could not be invoked"
           exit 1
 
       - name: Staging SPA is served
