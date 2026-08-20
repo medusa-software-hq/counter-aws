@@ -58,6 +58,11 @@ resource "aws_lambda_function" "api" {
   # Headroom for a cold start that may also have to wake the serverless database.
   timeout = 30
 
+  # A ceiling on simultaneous executions, so a runaway caller cannot scale this into a large compute
+  # bill. It reserves the capacity from the account pool as well, so the two environments cannot
+  # starve each other. Requests beyond it are rejected rather than queued.
+  reserved_concurrent_executions = 3
+
   # The Lambda fetches the Neon connection string from Secrets Manager itself (Lambda has no
   # secret-to-env mapping), so the DB password never sits in the function's plaintext config.
   environment {
@@ -112,6 +117,14 @@ resource "aws_apigatewayv2_stage" "default" {
   api_id      = aws_apigatewayv2_api.api.id
   name        = "$default"
   auto_deploy = true
+
+  # The concurrency ceiling on the function bounds compute, but not the per-request charges from
+  # this API and the distribution in front of it — a fast route sustains a high rate on very few
+  # instances. Throttling here is what bounds those. Generous for a counter; tighten freely.
+  default_route_settings {
+    throttling_rate_limit  = 10
+    throttling_burst_limit = 20
+  }
 }
 
 resource "aws_lambda_permission" "apigw_invoke" {
