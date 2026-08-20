@@ -10,6 +10,14 @@ locals {
 
   # The API Gateway endpoint, as a bare host for a CloudFront origin (no scheme).
   api_origin_host = replace(trimsuffix(data.terraform_remote_state.api.outputs.api_endpoint, "/"), "https://", "")
+
+  # AWS-managed CloudFront policies, which are referenced by id.
+  # https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-cache-policies.html
+  cache_policy_caching_optimized = "658327ea-f89d-4fab-a63d-7e88639e58f6"
+  cache_policy_caching_disabled  = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+
+  # https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-origin-request-policies.html
+  origin_request_policy_all_viewer_except_host_header = "b689b0a8-53d0-40ab-baf2-68738e2966ac"
 }
 
 data "terraform_remote_state" "api" {
@@ -117,8 +125,7 @@ resource "aws_cloudfront_distribution" "spa" {
     allowed_methods        = ["GET", "HEAD", "OPTIONS"]
     cached_methods         = ["GET", "HEAD"]
     compress               = true
-    # AWS-managed "CachingOptimized" policy.
-    cache_policy_id = "658327ea-f89d-4fab-a63d-7e88639e58f6"
+    cache_policy_id        = local.cache_policy_caching_optimized
   }
 
   # The API: pass every method through to the Lambda, uncached. The counter's writes are
@@ -130,12 +137,12 @@ resource "aws_cloudfront_distribution" "spa" {
     allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
     cached_methods         = ["GET", "HEAD"]
     compress               = false
-    # AWS-managed "CachingDisabled".
-    cache_policy_id = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
-    # AWS-managed "AllViewerExceptHostHeader": forward everything (incl. the
-    # Authorization header) but let CloudFront set the Host so SigV4 signing matches
-    # the API.
-    origin_request_policy_id = "b689b0a8-53d0-40ab-baf2-68738e2966ac"
+    # The counter must never be served from cache.
+    cache_policy_id = local.cache_policy_caching_disabled
+
+    # API Gateway routes by Host, so the origin's own host has to be sent rather than the viewer's.
+    # The viewer's Authorization header still reaches the JWT authorizer.
+    origin_request_policy_id = local.origin_request_policy_all_viewer_except_host_header
 
     function_association {
       event_type   = "viewer-request"
