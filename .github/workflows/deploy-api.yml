@@ -105,8 +105,13 @@ jobs:
     name: Test staging
     needs: deploy-staging
     uses: ./.github/workflows/test-staging.yml
+    permissions:
+      id-token: write # the API check invokes the function
+      contents: read
     with:
       target: api
+      aws-region: eu-central-1
+      aws-role-arn: arn:aws:iam::682544514886:role/counter-aws-github-actions
 
   deploy-production:
     name: Deploy production
