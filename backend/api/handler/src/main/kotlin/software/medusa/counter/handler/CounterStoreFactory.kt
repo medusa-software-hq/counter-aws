@@ -7,9 +7,6 @@ import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueReques
 
 @Factory
 class CounterStoreFactory {
-  // Resolve the Neon connection string from the Secrets Manager secret whose ARN the Lambda gets as
-  // an env var. Passing the ARN — not the URL — is what keeps the password out of the function's
-  // plaintext config.
   @Singleton fun counterStore(): CounterStore = PostgresCounterStore.build(resolveDatabaseUrl())
 
   private fun resolveDatabaseUrl(): String {

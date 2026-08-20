@@ -119,21 +119,15 @@ resource "github_repository_ruleset" "trunk_branches" {
   }
 }
 
-# Allow GitHub Actions from this repository to run
 resource "github_actions_repository_permissions" "this" {
   repository      = github_repository.this.name
   enabled         = true
   allowed_actions = "all"
 }
 
-# Deployment environments for the prod/staging split. Each holds the
-# environment-scoped CI/CD variables (API URL, Cognito issuer and client ids, …) that
-# distinguish a staging deploy from a prod one; a workflow job's `environment:`
-# is what makes its `vars.*` resolve to that environment's values. Required
-# reviewers are Enterprise-only for private repos, so the promotion gate is a
-# job dependency instead (see the deploy workflows); the Environment still earns
-# its keep through deployment tracking, scoped variables and a branch policy
-# that restricts deploys to the trunk.
+#region Deployment environments
+
+# Production environment
 resource "github_repository_environment" "production" {
   repository  = github_repository.this.name
   environment = "production"
@@ -144,13 +138,14 @@ resource "github_repository_environment" "production" {
   }
 }
 
-# Only the trunk may deploy to production.
+# Allow deployments only from the trunk branch
 resource "github_repository_environment_deployment_policy" "production_trunk" {
   repository     = github_repository.this.name
   environment    = github_repository_environment.production.environment
   branch_pattern = module.common.gh_default_branch_name
 }
 
+# Staging environment
 resource "github_repository_environment" "staging" {
   repository  = github_repository.this.name
   environment = "staging"
@@ -161,9 +156,11 @@ resource "github_repository_environment" "staging" {
   }
 }
 
-# Only the trunk may deploy to staging.
+# Allow deployments only from the trunk branch
 resource "github_repository_environment_deployment_policy" "staging_trunk" {
   repository     = github_repository.this.name
   environment    = github_repository_environment.staging.environment
   branch_pattern = module.common.gh_default_branch_name
 }
+
+#endregion

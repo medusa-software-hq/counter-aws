@@ -8,9 +8,8 @@ locals {
   variant = "aws"             # 🎨 TEMPLATE EJECT: Choose a project-unique variant name
   domain  = "medusa.software" # 🎨 TEMPLATE EJECT: Change to your organization's domain
 
-  # Hand-edited per-environment static constants (the GitHub deployment Environment name and the
-  # resource-name suffix). The single source of truth for values that must stay identical between
-  # Terraform and the built artifacts (the CLI).
+  # Hand-edited per-environment static constants — the single source of truth for values that must
+  # stay identical between Terraform and the built artifacts (the CLI).
   environments = {
     prod = {
       gh_environment_name  = "production"

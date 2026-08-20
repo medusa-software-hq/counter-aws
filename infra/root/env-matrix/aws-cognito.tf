@@ -53,9 +53,8 @@ resource "aws_cognito_user_pool" "main" {
     pre_token_generation = aws_lambda_function.pretoken.arn
   }
 
-  # Retained from the initial pool: federated group memberships can also be read
-  # from this attribute. Custom attributes can't be dropped without recreating
-  # the pool, and `cognito:groups` (set by the Lambda) is the primary path.
+  # Custom attributes can't be dropped without recreating the pool, so this stays even though the
+  # groups claim set by the pre-token Lambda is the path actually read.
   schema {
     name                = "groups"
     attribute_data_type = "String"
@@ -83,10 +82,8 @@ resource "aws_cognito_identity_provider" "idc" {
     IDPSignout  = "true"
   }
 
-  # Left of `=` is the pool attribute, right is the SAML assertion attribute the
-  # IdC application emits. Groups are not carried in the assertion (IdC SAML
-  # can't) — the pre-token Lambda populates cognito:groups instead.
   attribute_mapping = {
+    # Pool attribute = the assertion attribute the IdC application emits.
     email = "email"
   }
 
@@ -121,7 +118,7 @@ resource "aws_cognito_user_pool_client" "spa" {
 
 # CLI: also authorization code + PKCE, but with a loopback redirect — Cognito has
 # no OAuth device-authorization grant, so the CLI opens a browser and catches the
-# code on a fixed local port (finalized in the CLI login issue). Public client.
+# code on a fixed local port. Public client.
 resource "aws_cognito_user_pool_client" "cli" {
   name         = "${local.cognito_name}-cli"
   user_pool_id = aws_cognito_user_pool.main.id
@@ -141,9 +138,7 @@ resource "aws_cognito_user_pool_client" "cli" {
   depends_on = [aws_cognito_identity_provider.idc]
 }
 
-# Identity config the app builds consume, surfaced as per-environment Actions
-# variables (the same mechanism as API_URL). The SPA login (VITE_*), the API's
-# JWT verifier (issuer/audience), and the CLI login read these.
+# The identity values the app builds read, surfaced as Actions variables.
 resource "github_actions_environment_variable" "cognito" {
   for_each = {
     COGNITO_ISSUER_URL    = "https://cognito-idp.${module.common.aws_primary_location}.amazonaws.com/${aws_cognito_user_pool.main.id}"
@@ -162,7 +157,6 @@ output "cognito_user_pool_id" {
   value = aws_cognito_user_pool.main.id
 }
 
-# The SP identifiers the IdC SAML application must be configured with.
 output "cognito_saml_sp_entity_id" {
   description = "SP entity id (audience) for the IdC SAML application."
   value       = "urn:amazon:cognito:sp:${aws_cognito_user_pool.main.id}"
@@ -173,7 +167,6 @@ output "cognito_saml_acs_url" {
   value       = "https://${aws_cognito_user_pool_domain.main.domain}.auth.${module.common.aws_primary_location}.amazoncognito.com/saml2/idpresponse"
 }
 
-# The IdP used to be gated on the metadata URL being non-empty, which made it a counted resource.
 moved {
   from = aws_cognito_identity_provider.idc[0]
   to   = aws_cognito_identity_provider.idc

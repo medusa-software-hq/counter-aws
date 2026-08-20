@@ -65,6 +65,5 @@ class CounterApiClient(endpoint: ApiEndpoint, tokenProvider: TokenProvider) : Au
   }
 }
 
-/** The generated call returns an ApiResponse whose body is present on success. */
 private fun ApiResponse<CountReply>.body(): Long =
     data?.count ?: throw ApiException("API returned an empty response.")

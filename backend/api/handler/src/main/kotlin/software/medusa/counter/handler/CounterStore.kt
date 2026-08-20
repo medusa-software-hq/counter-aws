@@ -1,11 +1,21 @@
 package software.medusa.counter.handler
 
-// The single shared counter. Each operation returns the value after applying it. Increment on a
-// never-touched counter yields 1, decrement yields -1 (the store starts conceptually at 0).
+/** Stores a single, global counter. */
 interface CounterStore {
+  /** @return The current value of the counter (initially: 0). */
   fun current(): Long
 
+  /**
+   * Increments the counter.
+   *
+   * @return The incremented value.
+   */
   fun increment(): Long
 
+  /**
+   * Decrements the counter.
+   *
+   * @return The decremented value.
+   */
   fun decrement(): Long
 }

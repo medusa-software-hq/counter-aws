@@ -6,8 +6,8 @@ import java.nio.file.attribute.PosixFilePermissions
 import kotlinx.serialization.json.Json
 
 /**
- * All persisted per-environment state under a single [Environment.configDir]. Today that is just
- * the cached sign-in ([Credentials]); this is the one place that reads or writes the config
+ * All persisted per-environment state under a single environment's config directory — currently
+ * just the cached sign-in ([Credentials]); this is the one place that reads or writes the config
  * directory, so its file layout and on-disk permissions live in exactly one spot.
  *
  * The token inside [Credentials] is the sensitive bit, so the file is written 0600 and the
@@ -59,7 +59,6 @@ class ConfigStore(private val dir: Path) {
       prettyPrint = true
     }
 
-    /** Owner-only directory (0700) and file (0600) attributes, applied atomically at creation. */
     private val DIR_PERMISSIONS =
         PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------"))
     private val FILE_PERMISSIONS =

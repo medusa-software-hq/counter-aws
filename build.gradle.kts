@@ -22,20 +22,17 @@ allprojects {
 }
 
 subprojects {
-  // Configure Kotlin/JVM modules.
   pluginManager.withPlugin(kotlinJvmPluginId) {
-    // Apply Kotlin formatting and static analysis plugins.
     pluginManager.apply(ktfmtPluginId)
     pluginManager.apply(detektPluginId)
 
     tasks.named("check") {
-      // Run formatting checks as part of the standard verification lifecycle.
       dependsOn(tasks.named("ktfmtCheck"))
     }
 
     extensions.configure<JavaPluginExtension> {
       toolchain {
-        // Use a consistent Java toolchain version across local and CI builds.
+        // Pinned rather than inheriting whatever JDK is on PATH, so local and CI builds agree.
         languageVersion = JavaLanguageVersion.of(usedJavaVersion)
       }
     }

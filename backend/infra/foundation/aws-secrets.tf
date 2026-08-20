@@ -3,8 +3,7 @@
 resource "aws_secretsmanager_secret" "database_url" {
   name = "${module.common.aws_resource_prefix}-database-url${module.common.resource_name_suffix}"
 
-  # Experiment: allow immediate re-create after a delete rather than the default
-  # 30-day recovery window.
+  # Immediate re-create after a delete, rather than the default 30-day recovery window.
   recovery_window_in_days = 0
 }
 

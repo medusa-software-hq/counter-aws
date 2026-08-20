@@ -127,9 +127,10 @@ object CognitoLogin {
     return Credentials(tokens.idTokenString, refreshToken, expiresAt)
   }
 
-  // Best effort: the sign-in URL is always printed first, so a headless or browserless host can
-  // copy
-  // it. Any failure to auto-open is deliberately swallowed rather than aborting the login.
+  /**
+   * Best effort. The sign-in URL is printed first either way, so a headless host can copy it, and a
+   * failure to open is swallowed rather than aborting the login.
+   */
   private fun openBrowser(uri: URI) {
     runCatching {
       if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {

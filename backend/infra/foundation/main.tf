@@ -68,7 +68,6 @@ variable "cloudflare_zone_id" {
   type        = string
 }
 
-# Neon (serverless Postgres) backs the counter store; see neon.tf.
 provider "neon" {
   api_key = var.neon_api_key
 }

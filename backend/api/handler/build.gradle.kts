@@ -31,11 +31,6 @@ dependencies {
   implementation("io.micronaut.kotlin:micronaut-kotlin-runtime")
   implementation("io.micronaut.serde:micronaut-serde-jackson")
 
-  // Persistence: SQLDelight owns the schema (from the .sq) and generates type-safe queries over its
-  // JDBC driver; pgjdbc talks to Neon; the AWS SDK reads the connection string from Secrets
-  // Manager.
-  // pgjdbc and the SDK ship GraalVM reachability metadata (pgjdbc via the community repository
-  // enabled below, the SDK inside its own jars), so native needs no hand-written reflection config.
   implementation(libs.sqldelight.jdbc.driver)
   implementation(libs.postgresql)
   implementation("software.amazon.awssdk:secretsmanager:2.29.52")
@@ -43,9 +38,6 @@ dependencies {
   runtimeOnly(libs.logback.classic)
 }
 
-// SQLDelight generates a type-safe query layer (CounterDatabase) from the Postgres-dialect .sq; the
-// schema it emits (CREATE TABLE IF NOT EXISTS) is applied idempotently at cold start via
-// Schema.create. Versioned .sqm migrations can be added at the first schema change.
 sqldelight {
   databases {
     create("CounterDatabase") {
