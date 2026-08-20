@@ -2,22 +2,46 @@ terraform {
   required_version = ">= 1.14"
 }
 
-# infra/config is the single source; read it directly rather than the config.json it emits, so a
-# regeneration that has not been run yet cannot make Terraform plan against stale values. The JSON
-# exists for consumers that cannot run Terraform.
-module "config" {
-  source = "../../config"
-}
-
 locals {
-  # The deployment values that must stay identical between Terraform and the built artifacts (the
-  # CLI) live once in infra/config and are read here from its emitted config.json, so neither side
-  # can hardcode them independently and drift.
-  config = module.config.config
+  project_base_name   = "counter"         # 🎨 TEMPLATE EJECT: Choose an org-unique project base name
+  project_variant     = "aws"             # 🎨 TEMPLATE EJECT: Choose a project-unique variant name
+  organization_domain = "medusa.software" # 🎨 TEMPLATE EJECT: Change to your organization's domain
 
-  project_base_name   = local.config.project
-  project_variant     = local.config.variant
-  organization_domain = local.config.domain
+  # The environments this project has, and what genuinely differs between them. Resolving one is the
+  # environment module's job; this module only declares them, so it never depends on a workspace.
+  declared_environments = {
+    prod = {
+      gh_environment_name  = "production"
+      resource_name_suffix = ""
+    }
+    staging = {
+      gh_environment_name  = "staging"
+      resource_name_suffix = "-staging"
+    }
+  }
+
+  # Every name derived from an environment, spelled HERE and nowhere else. Both consumers read these
+  # rather than rebuilding them: the resources through the environment module, the CLI through the
+  # emitted contract. A second derivation would let the artifact and the deployed subdomain disagree
+  # — the exact drift the emitted contract exists to prevent, and one no diff of it would catch.
+  resource_labels = {
+    for env, config in local.declared_environments :
+    env => "${local.aws_resource_prefix}${config.resource_name_suffix}"
+  }
+
+  # The API's subdomain prefix, shared by every environment — the CI role scopes its custom-domain
+  # grant with it.
+  api_subdomain_prefix = "api.${local.aws_resource_prefix}"
+
+  environments = {
+    for env, config in local.declared_environments : env => merge(config, {
+      resource_label     = local.resource_labels[env]
+      api_subdomain_name = "api.${local.resource_labels[env]}"
+      web_subdomain_name = local.resource_labels[env]
+      api_host           = "api.${local.resource_labels[env]}.${local.organization_domain}"
+      web_host           = "${local.resource_labels[env]}.${local.organization_domain}"
+    })
+  }
 
   # One repo and one Actions pipeline serve every environment, so these are flavor constants rather
   # than per-environment config.
@@ -69,3 +93,29 @@ output "aws_account_id" { value = local.aws_account_id }
 output "aws_state_bucket_name" { value = local.aws_state_bucket_name }
 
 output "aws_resource_prefix" { value = local.aws_resource_prefix }
+
+# The contract emitted to config.json for consumers that cannot run Terraform — today the CLI, which
+# bakes the API host per environment. Deliberately narrow: everything above stays out of the
+# published binary unless it is named here. The hosts are derived, so a subdomain can never be
+# spelled differently in the artifact than in the resources.
+locals {
+  config = {
+    project = local.project_base_name
+    variant = local.project_variant
+    domain  = local.organization_domain
+    environments = {
+      for env, config in local.environments : env => {
+        gh_environment_name  = config.gh_environment_name
+        resource_name_suffix = config.resource_name_suffix
+        api_host             = config.api_host
+        web_host             = config.web_host
+      }
+    }
+  }
+}
+
+output "api_subdomain_prefix" { value = local.api_subdomain_prefix }
+
+output "config" { value = local.config }
+
+output "environments" { value = local.environments }

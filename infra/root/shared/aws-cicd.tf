@@ -105,7 +105,7 @@ resource "aws_iam_role_policy" "cicd" {
           "arn:aws:apigateway:${module.global.aws_primary_location}::/apis",
           "arn:aws:apigateway:${module.global.aws_primary_location}::/apis/*",
           "arn:aws:apigateway:${module.global.aws_primary_location}::/domainnames",
-          "arn:aws:apigateway:${module.global.aws_primary_location}::/domainnames/api.${module.global.project_base_name}-${module.global.project_variant}*",
+          "arn:aws:apigateway:${module.global.aws_primary_location}::/domainnames/${module.global.api_subdomain_prefix}*",
         ]
       },
       {

@@ -33,20 +33,20 @@ jobs:
       - uses: terraform-linters/setup-tflint@v6.2.2
 
       - name: Check formatting
-        working-directory: infra/config
+        working-directory: infra/common/global
         run: terraform fmt -check -recursive
 
       - name: Lint Terraform configuration
-        working-directory: infra/config
+        working-directory: infra/common/global
         run: tflint --recursive
 
       # No cloud auth: this root is pure locals. Re-emit config.json from them and
       # fail the PR on any diff, so the committed copy can't go stale.
       - name: Check config.json is not stale
-        working-directory: infra/config
+        working-directory: infra/common/global
         run: |
           terraform init -backend=false
           terraform validate
           echo 'jsonencode(local.config)' | terraform console | jq 'fromjson' > config.json.tmp
-          mv config.json.tmp config.json
-          git diff --exit-code config.json
+          mv config.json.tmp ../../config/config.json
+          git diff --exit-code ../../config/config.json

@@ -2,11 +2,8 @@ terraform {
   required_version = ">= 1.14"
 }
 
-# infra/config is the single source; read it directly rather than the config.json it emits, so a
-# regeneration that has not been run yet cannot make Terraform plan against stale values. The JSON
-# exists for consumers that cannot run Terraform.
-module "config" {
-  source = "../../config"
+module "global" {
+  source = "../global"
 }
 
 locals {
@@ -15,32 +12,22 @@ locals {
   # environment dimension import the global module instead of this one.
   name = terraform.workspace
 
-  config     = module.config.config
-  env_config = local.config.environments[local.name]
-
-  gh_environment_name  = local.env_config.gh_environment_name
-  resource_name_suffix = local.env_config.resource_name_suffix
-
-  # Subdomain under the organization domain, naming this environment's resources. The public hosts
-  # themselves come straight from config.json.
-  subdomain_label = "${local.config.project}-${local.config.variant}${local.resource_name_suffix}"
-
-  api_subdomain_name = "api.${local.subdomain_label}"
-  web_subdomain_name = local.subdomain_label
+  # Selection only. Every value below is derived once, where the environments are declared.
+  env = module.global.environments[local.name]
 }
 
 output "name" { value = local.name }
 
-output "gh_environment_name" { value = local.gh_environment_name }
+output "gh_environment_name" { value = local.env.gh_environment_name }
 
-output "resource_name_suffix" { value = local.resource_name_suffix }
+output "resource_name_suffix" { value = local.env.resource_name_suffix }
 
-output "subdomain_label" { value = local.subdomain_label }
+output "resource_label" { value = local.env.resource_label }
 
-output "api_subdomain_name" { value = local.api_subdomain_name }
+output "api_subdomain_name" { value = local.env.api_subdomain_name }
 
-output "api_host_name" { value = local.env_config.api_host }
+output "api_host_name" { value = local.env.api_host }
 
-output "web_subdomain_name" { value = local.web_subdomain_name }
+output "web_subdomain_name" { value = local.env.web_subdomain_name }
 
-output "web_host_name" { value = local.env_config.web_host }
+output "web_host_name" { value = local.env.web_host }

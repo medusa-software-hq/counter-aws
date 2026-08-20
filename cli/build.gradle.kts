@@ -87,7 +87,7 @@ tasks.withType<com.ncorti.ktfmt.gradle.tasks.KtfmtBaseTask>().configureEach {
 
 tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach { exclude("**/generated/**") }
 
-// The per-environment backend host is generated from the resolved config in infra/config — the
+// The per-environment backend host is generated from the committed deployment config — the
 // single source shared with Terraform — so the CLI can't drift from the deployed environments.
 // Nothing is committed; it regenerates whenever the config changes.
 val environmentsConfigFile = rootProject.file("infra/config/config.json")
