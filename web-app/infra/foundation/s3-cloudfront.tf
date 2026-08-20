@@ -6,7 +6,7 @@
 locals {
   # Globally-unique bucket name (S3 names are account-agnostic). Per environment
   # via the suffix; the account id keeps it unique across accounts.
-  spa_bucket_name = "${module.common.aws_resource_prefix}-web${module.common.resource_name_suffix}-${module.common.aws_account_id}"
+  spa_bucket_name = "${module.global.aws_resource_prefix}-web${module.environment.resource_name_suffix}-${module.global.aws_account_id}"
 
   # The API Gateway endpoint, as a bare host for a CloudFront origin (no scheme).
   api_origin_host = replace(trimsuffix(data.terraform_remote_state.api.outputs.api_endpoint, "/"), "https://", "")
@@ -67,7 +67,7 @@ resource "aws_s3_bucket_policy" "spa" {
 }
 
 resource "aws_cloudfront_origin_access_control" "spa" {
-  name                              = "${module.common.aws_resource_prefix}-web${module.common.resource_name_suffix}"
+  name                              = "${module.global.aws_resource_prefix}-web${module.environment.resource_name_suffix}"
   origin_access_control_origin_type = "s3"
   signing_behavior                  = "always"
   signing_protocol                  = "sigv4"
@@ -76,7 +76,7 @@ resource "aws_cloudfront_origin_access_control" "spa" {
 # The SPA calls same-origin "/api/...", but the API's operation paths are mounted at the
 # root — strip the "/api" prefix before the request reaches the API.
 resource "aws_cloudfront_function" "strip_api_prefix" {
-  name    = "${module.common.aws_resource_prefix}-strip-api${module.common.resource_name_suffix}"
+  name    = "${module.global.aws_resource_prefix}-strip-api${module.environment.resource_name_suffix}"
   runtime = "cloudfront-js-2.0"
   publish = true
   code    = <<-JS
@@ -94,7 +94,7 @@ resource "aws_cloudfront_function" "strip_api_prefix" {
 resource "aws_cloudfront_distribution" "spa" {
   enabled             = true
   default_root_object = "index.html"
-  aliases             = [module.common.web_host_name]
+  aliases             = [module.environment.web_host_name]
   # NA + EU only — cheapest tier that covers where this app is used.
   price_class = "PriceClass_100"
 
@@ -182,7 +182,7 @@ resource "aws_cloudfront_distribution" "spa" {
 resource "aws_acm_certificate" "spa" {
   provider = aws.us_east_1
 
-  domain_name       = module.common.web_host_name
+  domain_name       = module.environment.web_host_name
   validation_method = "DNS"
 
   lifecycle {

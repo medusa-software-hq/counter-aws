@@ -19,8 +19,8 @@ terraform {
 
 # Module imports
 
-module "common" {
-  source = "../../infra/common"
+module "global" {
+  source = "../../infra/common/global"
 }
 
 # GitHub provider
@@ -32,6 +32,6 @@ variable "gh_token" {
 }
 
 provider "github" {
-  owner = module.common.gh_organization_name
+  owner = module.global.gh_organization_name
   token = var.gh_token
 }

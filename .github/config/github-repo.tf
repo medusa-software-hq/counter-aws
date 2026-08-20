@@ -2,8 +2,8 @@
 
 # This repository
 resource "github_repository" "this" {
-  name        = module.common.gh_repo_name
-  description = "Variant: ${module.common.project_variant}"
+  name        = module.global.gh_repo_name
+  description = "Variant: ${module.global.project_variant}"
 
   # The repository is temporarily public
   visibility = "public"
@@ -142,7 +142,7 @@ resource "github_repository_environment" "production" {
 resource "github_repository_environment_deployment_policy" "production_trunk" {
   repository     = github_repository.this.name
   environment    = github_repository_environment.production.environment
-  branch_pattern = module.common.gh_default_branch_name
+  branch_pattern = module.global.gh_default_branch_name
 }
 
 # Staging environment
@@ -160,7 +160,7 @@ resource "github_repository_environment" "staging" {
 resource "github_repository_environment_deployment_policy" "staging_trunk" {
   repository     = github_repository.this.name
   environment    = github_repository_environment.staging.environment
-  branch_pattern = module.common.gh_default_branch_name
+  branch_pattern = module.global.gh_default_branch_name
 }
 
 #endregion

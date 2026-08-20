@@ -7,7 +7,8 @@ The lowest-level configuration, split by lifecycle:
 | `root/shared/`     | one state, no workspaces                    | Account-level singletons: the CI/CD role, the releases repo + its Actions variable, the API Gateway service-linked role. |
 | `root/env-matrix/` | one workspace per environment (`prod`, `staging`) | Per-environment resources: the Cognito user pool + IdC federation and the `COGNITO_*` Actions variables. |
 | `config/`          | pure locals, no cloud auth                  | The author-derived values emitted to `config.json` (hosts, env metadata) that the CLI and other non-Terraform consumers read. |
-| `common/`          | module (no state)                           | Values shared by the roots — names, the selected environment, `config.json` decoded. |
+| `common/global/`   | module (no state)                           | Values with no environment dimension — project and organization names, account, region, state bucket. |
+| `common/environment/` | module (no state)                        | The per-environment values, resolved from the workspace. Roots without an environment do not import it. |
 
 Both roots are applied with the operator's credentials (they manage IAM and account singletons the
 CI/CD role can't). `config/` needs no cloud access at all.

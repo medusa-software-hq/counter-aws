@@ -5,5 +5,5 @@
 resource "github_actions_variable" "gh_releases_client_id" {
   repository    = data.github_repository.this.name
   variable_name = "GH_RELEASES_CLIENT_ID"
-  value         = module.common.gh_releases_client_id
+  value         = module.global.gh_releases_client_id
 }

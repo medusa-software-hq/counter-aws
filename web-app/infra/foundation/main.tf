@@ -26,14 +26,18 @@ terraform {
 
 # Module imports
 
-module "common" {
-  source = "../../../infra/common"
+module "global" {
+  source = "../../../infra/common/global"
+}
+
+module "environment" {
+  source = "../../../infra/common/environment"
 }
 
 # Providers
 
 provider "aws" {
-  region = module.common.aws_primary_location
+  region = module.global.aws_primary_location
 }
 
 # CloudFront only serves ACM certificates from us-east-1, regardless of where the

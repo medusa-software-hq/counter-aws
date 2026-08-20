@@ -6,7 +6,7 @@ locals {
 }
 
 resource "aws_iam_role" "api" {
-  name = "${module.common.aws_resource_prefix}-api${module.common.resource_name_suffix}"
+  name = "${module.global.aws_resource_prefix}-api${module.environment.resource_name_suffix}"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -39,7 +39,7 @@ resource "aws_iam_role_policy" "api_read_database_url" {
 }
 
 resource "aws_lambda_function" "api" {
-  function_name = "${module.common.aws_resource_prefix}-api${module.common.resource_name_suffix}"
+  function_name = "${module.global.aws_resource_prefix}-api${module.environment.resource_name_suffix}"
   role          = aws_iam_role.api.arn
 
   package_type  = "Zip"
@@ -72,7 +72,7 @@ resource "aws_lambda_function" "api" {
 # The API is fronted by an API Gateway HTTP API: a Lambda-proxy integration with payload format 2.0.
 # Every route is gated by the Cognito JWT authorizer below.
 resource "aws_apigatewayv2_api" "api" {
-  name          = "${module.common.aws_resource_prefix}-api${module.common.resource_name_suffix}"
+  name          = "${module.global.aws_resource_prefix}-api${module.environment.resource_name_suffix}"
   protocol_type = "HTTP"
 }
 
@@ -88,7 +88,7 @@ resource "aws_apigatewayv2_integration" "lambda" {
 # This is the whole authentication story: the function does no token work.
 resource "aws_apigatewayv2_authorizer" "cognito" {
   api_id           = aws_apigatewayv2_api.api.id
-  name             = "${module.common.aws_resource_prefix}-cognito${module.common.resource_name_suffix}"
+  name             = "${module.global.aws_resource_prefix}-cognito${module.environment.resource_name_suffix}"
   authorizer_type  = "JWT"
   identity_sources = ["$request.header.Authorization"]
 

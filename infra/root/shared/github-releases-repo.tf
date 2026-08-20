@@ -8,8 +8,8 @@
 # 🎨 TEMPLATE POST-EJECT: install the releaser GitHub App on this repo, on the
 # releases repo below, and on the shared homebrew-tap.
 resource "github_repository" "counter_releases" {
-  name        = module.common.gh_releases_repo_name
-  description = "Release assets for the ${module.common.gh_repo_name} CLI."
+  name        = module.global.gh_releases_repo_name
+  description = "Release assets for the ${module.global.gh_repo_name} CLI."
   visibility  = "public"
 
   has_issues   = false
@@ -31,9 +31,9 @@ resource "github_repository_file" "counter_releases_readme" {
   branch              = github_repository.counter_releases.default_branch
   file                = "README.md"
   content             = <<-MD
-    # ${module.common.gh_releases_repo_name}
+    # ${module.global.gh_releases_repo_name}
 
-    Release assets for the `${module.common.gh_repo_name}` CLI. Populated by the Publish CLI workflow;
+    Release assets for the `${module.global.gh_repo_name}` CLI. Populated by the Publish CLI workflow;
     the repository itself is managed by Terraform.
   MD
   commit_message      = "Initialise releases repository"

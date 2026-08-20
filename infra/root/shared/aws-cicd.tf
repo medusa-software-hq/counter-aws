@@ -5,10 +5,10 @@ data "aws_iam_openid_connect_provider" "github" {
 }
 
 locals {
-  aws_state_bucket_arn = "arn:aws:s3:::${module.common.aws_state_bucket_name}"
+  aws_state_bucket_arn = "arn:aws:s3:::${module.global.aws_state_bucket_name}"
   # Counter's state lives under this prefix (and under env:/<workspace>/… for
   # non-default workspaces).
-  aws_state_prefix = "projects/${module.common.project_base_name}/${module.common.project_variant}"
+  aws_state_prefix = "projects/${module.global.project_base_name}/${module.global.project_variant}"
 
   # CI/CD applies only the two app foundations, so it reaches only their state —
   # not root/shared or root/env-matrix, which the operator applies. root/shared
@@ -36,7 +36,7 @@ locals {
 
 # Role GitHub Actions assumes via OIDC to deploy this variant, scoped to the repo.
 resource "aws_iam_role" "cicd" {
-  name = "${module.common.aws_resource_prefix}-github-actions"
+  name = "${module.global.aws_resource_prefix}-github-actions"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -52,8 +52,8 @@ resource "aws_iam_role" "cicd" {
         # (`repo:org@<org-id>/repo@<repo-id>:…`), which this repo now issues.
         StringLike = {
           "token.actions.githubusercontent.com:sub" = [
-            "repo:${module.common.gh_organization_name}/${module.common.gh_repo_name}:*",
-            "repo:${module.common.gh_organization_name}@*/${module.common.gh_repo_name}@*:*",
+            "repo:${module.global.gh_organization_name}/${module.global.gh_repo_name}:*",
+            "repo:${module.global.gh_organization_name}@*/${module.global.gh_repo_name}@*:*",
           ]
         }
       }
@@ -90,7 +90,7 @@ resource "aws_iam_role_policy" "cicd" {
         Sid      = "LambdaManage"
         Effect   = "Allow"
         Action   = "lambda:*"
-        Resource = "arn:aws:lambda:${module.common.aws_primary_location}:${module.common.aws_account_id}:function:${module.common.aws_resource_prefix}-*"
+        Resource = "arn:aws:lambda:${module.global.aws_primary_location}:${module.global.aws_account_id}:function:${module.global.aws_resource_prefix}-*"
       },
       {
         # Apply the API foundation from CI. Creating an API is apigateway:POST on the collection ARN
@@ -102,10 +102,10 @@ resource "aws_iam_role_policy" "cicd" {
         Effect = "Allow"
         Action = "apigateway:*"
         Resource = [
-          "arn:aws:apigateway:${module.common.aws_primary_location}::/apis",
-          "arn:aws:apigateway:${module.common.aws_primary_location}::/apis/*",
-          "arn:aws:apigateway:${module.common.aws_primary_location}::/domainnames",
-          "arn:aws:apigateway:${module.common.aws_primary_location}::/domainnames/api.${module.common.project_base_name}-${module.common.project_variant}*",
+          "arn:aws:apigateway:${module.global.aws_primary_location}::/apis",
+          "arn:aws:apigateway:${module.global.aws_primary_location}::/apis/*",
+          "arn:aws:apigateway:${module.global.aws_primary_location}::/domainnames",
+          "arn:aws:apigateway:${module.global.aws_primary_location}::/domainnames/api.${module.global.project_base_name}-${module.global.project_variant}*",
         ]
       },
       {
@@ -125,13 +125,13 @@ resource "aws_iam_role_policy" "cicd" {
           "iam:AttachRolePolicy",
           "iam:DetachRolePolicy",
         ]
-        Resource = "arn:aws:iam::${module.common.aws_account_id}:role/${module.common.aws_resource_prefix}-*"
+        Resource = "arn:aws:iam::${module.global.aws_account_id}:role/${module.global.aws_resource_prefix}-*"
       },
       {
         Sid      = "LambdaPassRole"
         Effect   = "Allow"
         Action   = "iam:PassRole"
-        Resource = "arn:aws:iam::${module.common.aws_account_id}:role/${module.common.aws_resource_prefix}-*"
+        Resource = "arn:aws:iam::${module.global.aws_account_id}:role/${module.global.aws_resource_prefix}-*"
         Condition = {
           StringEquals = { "iam:PassedToService" = "lambda.amazonaws.com" }
         }
@@ -149,7 +149,7 @@ resource "aws_iam_role_policy" "cicd" {
           "secretsmanager:DeleteSecret",
           "secretsmanager:GetResourcePolicy",
         ]
-        Resource = "arn:aws:secretsmanager:${module.common.aws_primary_location}:${module.common.aws_account_id}:secret:${module.common.aws_resource_prefix}-*"
+        Resource = "arn:aws:secretsmanager:${module.global.aws_primary_location}:${module.global.aws_account_id}:secret:${module.global.aws_resource_prefix}-*"
       },
       {
         # Manage this variant's SPA bucket. `s3:Get*` (bucket-scoped, so it does
@@ -169,15 +169,15 @@ resource "aws_iam_role_policy" "cicd" {
           "s3:PutBucketTagging",
           "s3:PutBucketVersioning",
         ]
-        Resource = "arn:aws:s3:::${module.common.aws_resource_prefix}-web*"
+        Resource = "arn:aws:s3:::${module.global.aws_resource_prefix}-web*"
       },
       {
         Sid    = "WebBucketObjects"
         Effect = "Allow"
         Action = ["s3:ListBucket", "s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
         Resource = [
-          "arn:aws:s3:::${module.common.aws_resource_prefix}-web*",
-          "arn:aws:s3:::${module.common.aws_resource_prefix}-web*/*",
+          "arn:aws:s3:::${module.global.aws_resource_prefix}-web*",
+          "arn:aws:s3:::${module.global.aws_resource_prefix}-web*/*",
         ]
       },
       {

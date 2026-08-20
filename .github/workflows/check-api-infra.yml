@@ -43,6 +43,10 @@ jobs:
       # environment on trunk (see Deploy API).
       - name: Validate Terraform configuration
         working-directory: backend/infra/foundation
+        # This root's configuration is per environment, and `default` is deliberately not one, so
+        # name an environment to validate against.
+        env:
+          TF_WORKSPACE: prod
         run: |
           terraform init -backend=false
           terraform validate

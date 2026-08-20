@@ -3,7 +3,7 @@
 # URL. The certificate is regional (same region as the API), unlike the CloudFront cert in us-east-1;
 # it is DNS-validated through Cloudflare, the same mechanism the web foundation uses.
 resource "aws_acm_certificate" "api" {
-  domain_name       = module.common.api_host_name
+  domain_name       = module.environment.api_host_name
   validation_method = "DNS"
 
   lifecycle {
@@ -31,7 +31,7 @@ resource "aws_acm_certificate_validation" "api" {
 }
 
 resource "aws_apigatewayv2_domain_name" "api" {
-  domain_name = module.common.api_host_name
+  domain_name = module.environment.api_host_name
 
   domain_name_configuration {
     certificate_arn = aws_acm_certificate_validation.api.certificate_arn
@@ -52,7 +52,7 @@ resource "aws_apigatewayv2_api_mapping" "api" {
 resource "cloudflare_dns_record" "api" {
   zone_id = var.cloudflare_zone_id
   type    = "CNAME"
-  name    = module.common.api_subdomain_name
+  name    = module.environment.api_subdomain_name
   content = aws_apigatewayv2_domain_name.api.domain_name_configuration[0].target_domain_name
   ttl     = 1 # "automatic"
   proxied = false
