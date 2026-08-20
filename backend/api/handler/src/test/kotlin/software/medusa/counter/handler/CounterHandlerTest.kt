@@ -1,6 +1,7 @@
 package software.medusa.counter.handler
 
 import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPEvent
+import io.micronaut.context.ApplicationContext
 import io.micronaut.function.aws.proxy.MockLambdaContext
 import io.micronaut.function.aws.proxy.payload2.APIGatewayV2HTTPEventFunction
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -24,7 +25,14 @@ class CounterHandlerTest {
 
   @Test
   fun `get, increment and decrement round-trip through the payload-v2 handler`() {
-    val handler = APIGatewayV2HTTPEventFunction()
+    // Built the way the runtime builds it: the store is handed in, not discovered, so this covers
+    // the wiring production actually uses.
+    val context =
+        ApplicationContext.builder()
+            .singletons(InMemoryCounterStore())
+            .eagerInitSingletons(true)
+            .start()
+    val handler = APIGatewayV2HTTPEventFunction(context)
     try {
       val ctx = MockLambdaContext()
 
@@ -40,7 +48,7 @@ class CounterHandlerTest {
       assertEquals(200, decremented.statusCode)
       assertEquals("""{"count":0}""", decremented.body)
     } finally {
-      handler.applicationContext.close()
+      context.close()
     }
   }
 }
