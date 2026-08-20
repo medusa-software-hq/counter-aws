@@ -21,6 +21,7 @@ resource "cloudflare_dns_record" "api_cert_validation" {
   type    = each.value.resource_record_type
   content = trimsuffix(each.value.resource_record_value, ".")
   ttl     = 1 # "automatic"
+  # API Gateway terminates TLS with its own ACM certificate, so Cloudflare must stay out of the path.
   proxied = false
 }
 
@@ -47,8 +48,7 @@ resource "aws_apigatewayv2_api_mapping" "api" {
   stage       = aws_apigatewayv2_stage.default.id
 }
 
-# Point the public API host at the regional API Gateway custom domain. Not proxied: API Gateway
-# terminates TLS with its own ACM certificate for this host, so Cloudflare must stay out of the path.
+# The API's public host.
 resource "cloudflare_dns_record" "api" {
   zone_id = var.cloudflare_zone_id
   type    = "CNAME"

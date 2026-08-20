@@ -20,11 +20,11 @@ on:
 permissions:
   contents: read
 
-# `needs:` only orders jobs inside one run. Two pushes (or a push racing a manual dispatch) would
-# otherwise apply the same workspace concurrently; queue them instead of cancelling, so a deploy
-# already touching infrastructure always finishes.
+# `needs:` only orders jobs inside one run, so two pushes — or a push racing a manual dispatch —
+# could otherwise apply the same workspace at the same time.
 concurrency:
   group: ${{ github.workflow }}
+  # Queue rather than cancel: a run already touching infrastructure should be allowed to finish.
   cancel-in-progress: false
 
 env:

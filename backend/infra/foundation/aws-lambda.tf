@@ -52,11 +52,11 @@ resource "aws_lambda_function" "api" {
   # its absence, and every real plan/apply computes the true hash so a rebuilt binary redeploys.
   source_code_hash = fileexists(local.lambda_zip) ? filebase64sha256(local.lambda_zip) : null
 
-  # A GraalVM-native cold start is fast, but the first request may also wake the serverless Neon
-  # database and open a TLS connection, so allow some headroom. More memory also raises the vCPU
-  # share, which shortens the connect.
+  # Raises the vCPU share too, which shortens the database TLS connect.
   memory_size = 512
-  timeout     = 30
+
+  # Headroom for a cold start that may also have to wake the serverless database.
+  timeout = 30
 
   # The Lambda fetches the Neon connection string from Secrets Manager itself (Lambda has no
   # secret-to-env mapping), so the DB password never sits in the function's plaintext config.
