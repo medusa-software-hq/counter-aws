@@ -1,15 +1,8 @@
 package software.medusa.counter.handler
 
-import io.micronaut.context.annotation.Replaces
-import jakarta.inject.Singleton
 import java.util.concurrent.atomic.AtomicLong
 
-/**
- * Replaces the persistent store in the handler test, so it exercises routing and serialization
- * without a database.
- */
-@Singleton
-@Replaces(CounterStore::class)
+/** Stands in for the persistent store, so the handler test needs no database. */
 class InMemoryCounterStore : CounterStore {
   private val value = AtomicLong(0)
 

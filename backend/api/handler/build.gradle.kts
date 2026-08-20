@@ -13,11 +13,7 @@ plugins {
 // reference.
 version = "1.0.0"
 
-// The native binary's entrypoint is selected by `nativeLambda` below; this sets the same v2 runtime
-// as the JVM/AOT main class so the non-native build tasks resolve an entrypoint too.
-application {
-  mainClass = "io.micronaut.function.aws.runtime.APIGatewayV2HTTPEventMicronautLambdaRuntime"
-}
+application { mainClass = "software.medusa.counter.handler.CounterLambdaRuntimeKt" }
 
 dependencies {
   ksp("io.micronaut.serde:micronaut-serde-processor")
@@ -49,9 +45,10 @@ sqldelight {
 
 micronaut {
   runtime("lambda_provided")
-  // A Lambda function URL delivers API Gateway HTTP-API payload format 2.0; the default is v1. This
-  // selects the v2 custom-runtime entrypoint, which drives the embedded Micronaut router.
-  nativeLambda { lambdaRuntime = io.micronaut.gradle.graalvm.NativeLambdaRuntime.API_GATEWAY_V2 }
+
+  // The plugin otherwise substitutes one of its own runtime classes as the native entrypoint,
+  // regardless of the application main class — which would silently discard ours.
+  nativeLambda { lambdaRuntimeClassName = "software.medusa.counter.handler.CounterLambdaRuntimeKt" }
   testRuntime("junit5")
   processing {
     incremental(true)
