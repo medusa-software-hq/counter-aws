@@ -17,11 +17,6 @@ locals {
   aws_cicd_state_prefixes = [
     "${local.aws_state_prefix}/backend/foundation",
     "${local.aws_state_prefix}/web-app/foundation",
-
-    # Transitional: the keys above were `api/foundation` and `apps/web/foundation`. Kept reachable
-    # so the role works either side of the state move; removed once it has settled.
-    "${local.aws_state_prefix}/api/foundation",
-    "${local.aws_state_prefix}/apps/web/foundation",
   ]
   aws_cicd_state_object_arns = flatten([
     for prefix in local.aws_cicd_state_prefixes : [
