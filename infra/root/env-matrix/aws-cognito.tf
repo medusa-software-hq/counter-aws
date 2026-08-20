@@ -22,20 +22,20 @@ variable "idc_saml_metadata_urls" {
 }
 
 locals {
-  cognito_name = "${module.common.aws_resource_prefix}${module.common.resource_name_suffix}"
+  cognito_name = "${module.global.aws_resource_prefix}${module.environment.resource_name_suffix}"
 
-  idc_saml_metadata_url = var.idc_saml_metadata_urls[module.common.environment]
+  idc_saml_metadata_url = var.idc_saml_metadata_urls[module.environment.name]
 
   # Hosted-UI domain prefix. It must be globally unique and must NOT contain the
   # reserved words aws/amazon/cognito — so it cannot be derived from the
   # `counter-aws` resource prefix; use the org + project name and account id instead.
-  cognito_domain_prefix = "${module.common.organization_name}-${module.common.project_base_name}${module.common.resource_name_suffix}-${module.common.aws_account_id}"
+  cognito_domain_prefix = "${module.global.organization_name}-${module.global.project_base_name}${module.environment.resource_name_suffix}-${module.global.aws_account_id}"
 
   saml_provider_name = "IdC"
   # Federated users get their identities only from IdC; the pool itself is never an identity source.
   identity_providers = [local.saml_provider_name]
 
-  web_url = "https://${module.common.web_host_name}"
+  web_url = "https://${module.environment.web_host_name}"
 }
 
 resource "aws_cognito_user_pool" "main" {
@@ -141,14 +141,14 @@ resource "aws_cognito_user_pool_client" "cli" {
 # The identity values the app builds read, surfaced as Actions variables.
 resource "github_actions_environment_variable" "cognito" {
   for_each = {
-    COGNITO_ISSUER_URL    = "https://cognito-idp.${module.common.aws_primary_location}.amazonaws.com/${aws_cognito_user_pool.main.id}"
-    COGNITO_HOSTED_UI_URL = "https://${aws_cognito_user_pool_domain.main.domain}.auth.${module.common.aws_primary_location}.amazoncognito.com"
+    COGNITO_ISSUER_URL    = "https://cognito-idp.${module.global.aws_primary_location}.amazonaws.com/${aws_cognito_user_pool.main.id}"
+    COGNITO_HOSTED_UI_URL = "https://${aws_cognito_user_pool_domain.main.domain}.auth.${module.global.aws_primary_location}.amazoncognito.com"
     COGNITO_SPA_CLIENT_ID = aws_cognito_user_pool_client.spa.id
     COGNITO_CLI_CLIENT_ID = aws_cognito_user_pool_client.cli.id
   }
 
   repository    = data.github_repository.this.name
-  environment   = module.common.gh_environment_name
+  environment   = module.environment.gh_environment_name
   variable_name = each.key
   value         = each.value
 }
@@ -164,7 +164,7 @@ output "cognito_saml_sp_entity_id" {
 
 output "cognito_saml_acs_url" {
   description = "SAML assertion consumer service URL for the IdC application."
-  value       = "https://${aws_cognito_user_pool_domain.main.domain}.auth.${module.common.aws_primary_location}.amazoncognito.com/saml2/idpresponse"
+  value       = "https://${aws_cognito_user_pool_domain.main.domain}.auth.${module.global.aws_primary_location}.amazoncognito.com/saml2/idpresponse"
 }
 
 moved {

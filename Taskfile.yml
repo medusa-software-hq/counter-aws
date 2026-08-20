@@ -6,8 +6,8 @@ includes:
     dir: infra
 
   config:
-    taskfile: infra/config/Taskfile.yml
-    dir: infra/config
+    taskfile: infra/common/global/Taskfile.yml
+    dir: infra/common/global
 
   web-app:
     taskfile: web-app/Taskfile.yml

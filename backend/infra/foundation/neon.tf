@@ -1,6 +1,6 @@
 # Neon (serverless Postgres) project backing the counter store.
 resource "neon_project" "main" {
-  name      = "${module.common.project_base_name}-${module.common.project_variant}${module.common.resource_name_suffix}"
+  name      = module.environment.resource_label
   region_id = "aws-eu-central-1"
 
   # The provider defaults this to 86400s (24h), which exceeds the Free plan's

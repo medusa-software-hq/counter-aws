@@ -28,8 +28,8 @@ terraform {
   }
 }
 
-module "common" {
-  source = "../../common"
+module "global" {
+  source = "../../common/global"
 }
 
 variable "gh_token" {
@@ -39,14 +39,14 @@ variable "gh_token" {
 }
 
 provider "github" {
-  owner = module.common.gh_organization_name
+  owner = module.global.gh_organization_name
   token = var.gh_token
 }
 
 data "github_repository" "this" {
-  full_name = "${module.common.gh_organization_name}/${module.common.gh_repo_name}"
+  full_name = "${module.global.gh_organization_name}/${module.global.gh_repo_name}"
 }
 
 provider "aws" {
-  region = module.common.aws_primary_location
+  region = module.global.aws_primary_location
 }

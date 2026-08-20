@@ -39,8 +39,12 @@ jobs:
 
       # `terraform fmt`/`tflint` are syntactic; only `validate` catches a bad reference or a wrong
       # argument. The two root configurations are checked here because no other workflow does it —
-      # `infra/config` has its own (Check config), as do both app foundations.
+      # The shared modules have their own (Check config), as do both app foundations.
       - name: Validate Terraform configuration
+        # The per-environment root resolves its config by workspace, and `default` is deliberately
+        # not an environment; the account-level root ignores this.
+        env:
+          TF_WORKSPACE: prod
         run: |
           for root in infra/root/shared infra/root/env-matrix; do
             terraform -chdir="$root" init -backend=false

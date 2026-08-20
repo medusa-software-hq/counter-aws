@@ -11,7 +11,7 @@ import software.medusa.counter.cli.api.ApiEndpoint
  * Each environment is a self-contained bundle of everything a command needs — where its state lives
  * (partitioned, never mixed) and which backend to talk to — so the CLI behaves as N independent
  * instances sharing a binary. Each deployed environment's backend host + Cognito config are baked
- * in at build time as a generated [EnvironmentConfig] (from `infra/config` + the Cognito CI
+ * in at build time as a generated [EnvironmentConfig] (from the deployment config + the Cognito CI
  * variables), so the CLI can't drift from the deployed environments.
  */
 sealed interface Environment {
