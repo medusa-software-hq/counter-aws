@@ -29,9 +29,14 @@ locals {
       "${local.aws_state_bucket_arn}/env:/*/${prefix}/*",
     ]
   ])
-  aws_cicd_state_list_prefixes = flatten([
+  # Terraform enumerates workspaces by listing the bare `env:/` prefix, so that prefix has to be
+  # allowed on its own — a condition naming only the per-root prefixes below denies the listing, and
+  # `terraform workspace select <name>` then reports the workspace as non-existent. The listing
+  # returns key names under `env:/` for every project in the shared bucket; reading any of them is
+  # still governed by the object statement, which stays scoped to this variant's two foundations.
+  aws_cicd_state_list_prefixes = concat(["env:/"], flatten([
     for prefix in local.aws_cicd_state_prefixes : ["${prefix}/*", "env:/*/${prefix}/*"]
-  ])
+  ]))
 }
 
 # Role GitHub Actions assumes via OIDC to deploy this variant, scoped to the repo.
