@@ -6,7 +6,7 @@ name: Deploy API
 #
 # The API artifact is a Terraform-managed resource (the Lambda's `filename` zip), so "deploy" *is*
 # `terraform apply`; there is no separate push step to split out. Each environment applies the
-# foundation in its own Terraform workspace (production stays on `default`), and `environment:` makes
+# foundation in its own Terraform workspace (`prod` / `staging`), and `environment:` makes
 # the per-environment Cognito variables resolve to the right pool.
 
 on:
@@ -141,5 +141,5 @@ jobs:
           TF_VAR_cloudflare_zone_id: ${{ vars.CLOUDFLARE_ZONE_ID }}
         run: |
           terraform init -input=false
-          terraform workspace select default
+          terraform workspace select prod
           terraform apply -auto-approve -input=false

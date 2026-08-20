@@ -5,8 +5,8 @@ name: Deploy Web app
 #
 # Unlike the API's config-agnostic zip, the SPA bakes its config at build time (VITE_COGNITO_*), so
 # each environment builds its own bundle — there is no build-once/promote. `environment:` resolves the
-# per-environment Cognito variables, and each foundation applies in its own workspace (production stays
-# on `default`); the API URL is the same-origin path "/api" in both.
+# per-environment Cognito variables, and each foundation applies in its own workspace (`prod` /
+# `staging`); the API URL is the same-origin path "/api" in both.
 
 on:
   push:
@@ -139,7 +139,7 @@ jobs:
           TF_VAR_cloudflare_zone_id: ${{ vars.CLOUDFLARE_ZONE_ID }}
         run: |
           terraform init -input=false
-          terraform workspace select default
+          terraform workspace select prod
           terraform apply -auto-approve -input=false
           {
             echo "bucket=$(terraform output -raw spa_bucket_name)"
