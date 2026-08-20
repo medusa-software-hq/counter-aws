@@ -45,7 +45,7 @@ dependencies {
 
 // SQLDelight generates a type-safe query layer (CounterDatabase) from the Postgres-dialect .sq; the
 // schema it emits (CREATE TABLE IF NOT EXISTS) is applied idempotently at cold start via
-// Schema.create. Versioned .sqm migrations can be added at the first schema change.
+// Schema.create.
 sqldelight {
   databases {
     create("CounterDatabase") {

@@ -28,8 +28,7 @@ jobs:
       - name: Staging API rejects unauthenticated calls
         if: inputs.target == 'api'
         run: |
-          # The Cognito JWT authorizer must reject an unauthenticated request with 401; anything else
-          # means the API is down, misrouted, or the authorizer isn't in front of it.
+          # Anything but 401 means the API is down, misrouted, or the authorizer isn't in front of it.
           url="https://api.counter-aws-staging.medusa.software/counter/get"
           for attempt in $(seq 1 10); do
             code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "$url" || true)

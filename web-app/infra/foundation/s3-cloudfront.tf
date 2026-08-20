@@ -12,7 +12,6 @@ locals {
   api_origin_host = replace(trimsuffix(data.terraform_remote_state.api.outputs.api_endpoint, "/"), "https://", "")
 }
 
-# The API lives in its own Terraform state; read its endpoint from there.
 data "terraform_remote_state" "api" {
   backend = "s3"
 
@@ -67,7 +66,7 @@ resource "aws_cloudfront_origin_access_control" "spa" {
 }
 
 # The SPA calls same-origin "/api/...", but the API's operation paths are mounted at the
-# root — strip the "/api" prefix before the request reaches the function URL.
+# root — strip the "/api" prefix before the request reaches the API.
 resource "aws_cloudfront_function" "strip_api_prefix" {
   name    = "${module.common.aws_resource_prefix}-strip-api${module.common.resource_name_suffix}"
   runtime = "cloudfront-js-2.0"
@@ -97,9 +96,9 @@ resource "aws_cloudfront_distribution" "spa" {
     origin_access_control_id = aws_cloudfront_origin_access_control.spa.id
   }
 
-  # The API Gateway HTTP API endpoint. It's a public endpoint (a Cognito JWT authorizer is the gate,
-  # in a later slice), so no Origin Access Control — the viewer's Authorization header is forwarded
-  # for the authorizer via the origin request policy below.
+  # The API Gateway HTTP API endpoint. A Cognito JWT authorizer is the gate, so there is no Origin
+  # Access Control — the viewer's Authorization header is forwarded for it by the origin request
+  # policy below.
   origin {
     origin_id   = "api-func-url"
     domain_name = local.api_origin_host
@@ -135,7 +134,7 @@ resource "aws_cloudfront_distribution" "spa" {
     cache_policy_id = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
     # AWS-managed "AllViewerExceptHostHeader": forward everything (incl. the future
     # Authorization header) but let CloudFront set the Host so SigV4 signing matches
-    # the function URL.
+    # the API.
     origin_request_policy_id = "b689b0a8-53d0-40ab-baf2-68738e2966ac"
 
     function_association {

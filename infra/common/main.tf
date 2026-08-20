@@ -3,11 +3,9 @@ terraform {
 }
 
 locals {
-  # Deployment environment, derived from the Terraform workspace. The `default`
-  # workspace is production — its state predates the prod/staging split, so it
-  # stays in place (no state migration); every other workspace is a named
-  # non-prod environment. This is the single dimension that distinguishes prod
-  # from staging across every root that imports this module.
+  # Deployment environment, derived from the Terraform workspace: `default` resolves to prod, so a
+  # root with no environment dimension gets a valid config without selecting a workspace. The single
+  # dimension that distinguishes prod from staging across every root importing this module.
   environment = terraform.workspace == "default" ? "prod" : terraform.workspace
 
   # The deployment values that must stay identical between Terraform and the built artifacts (the
@@ -24,10 +22,8 @@ locals {
   gh_environment_name  = local.selected_env_config.gh_environment_name
   resource_name_suffix = local.selected_env_config.resource_name_suffix
 
-  # The GitHub org + repo that holds the code and runs CI/CD — the SAME for
-  # every environment (one repo, one Actions pipeline), so a flavor constant,
-  # NOT part of the per-environment config. Used for the `github` provider owner
-  # and Terraform state prefixes.
+  # The GitHub org + repo that holds the code and runs CI/CD — the SAME for every environment (one
+  # repo, one Actions pipeline), so a flavor constant, NOT part of the per-environment config.
   gh_organization_name   = "medusa-software-hq" # 🎨 TEMPLATE EJECT: Change to your GitHub org
   gh_repo_name           = "counter-aws"        # 🎨 TEMPLATE EJECT: Change to your repository
   gh_default_branch_name = "trunk/aws"          # 🎨 TEMPLATE EJECT: Change the default branch
@@ -40,9 +36,8 @@ locals {
   # 🎨 TEMPLATE POST-EJECT: Create a GitHub App and change its client id here 👇
   gh_releases_client_id = "Iv23ct4SGbvxYw9pxJs8" # "Medusa Counter Releaser"
 
-  # Short organization name, for globally-unique names that can't carry the resource prefix (the
-  # Cognito Hosted-UI domain: AWS reserves aws/amazon/cognito, and this variant's prefix contains
-  # "aws").
+  # Short organization name, for globally-unique names that can't be built from the resource
+  # prefix.
   organization_name = "medusa" # 🎨 TEMPLATE EJECT: Change to your organization's short name
 
   aws_primary_location = "eu-central-1" # 🎨 TEMPLATE EJECT: Change to your primary region
@@ -53,7 +48,6 @@ locals {
   # backend blocks, which take no variables.
   aws_state_bucket_name = "ms-tfstate-aws-${local.aws_account_id}"
 
-  # Prefix for this variant's AWS resources, e.g. counter-aws-github-actions.
   aws_resource_prefix = "${local.project_base_name}-${local.project_variant}"
 
   # Subdomain under organization_domain — per environment (the suffix is empty
@@ -61,14 +55,11 @@ locals {
   # hosts themselves come straight from config.json (below).
   subdomain_label = "${local.project_base_name}-${local.project_variant}${local.resource_name_suffix}"
 
-  # The API's public host, from config.json: the domain mapping publishes its DNS
-  # record. Sourcing it from the single config keeps every use from drifting from
+  # The public hosts, from config.json — sourced from the single config so no consumer drifts from
   # the deployed subdomain.
   api_subdomain_name = "api.${local.subdomain_label}"
   api_host_name      = local.selected_env_config.api_host
 
-  # The web app's public host — the SPA is served here (CloudFront + ACM), and
-  # the domain mapping points its DNS record at the distribution.
   web_subdomain_name = local.subdomain_label
   web_host_name      = local.selected_env_config.web_host
 }

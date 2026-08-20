@@ -26,8 +26,6 @@ class MainCommand : NoOpCliktCommand(name = "ms-counter") {
 }
 
 fun main(args: Array<String>) {
-  // Each command is self-contained: it resolves the environment, opens its config, and (for API
-  // commands) builds the authenticated client — see AppCommand / ManagementCommand.
   MainCommand()
       .subcommands(
           LoginCommand(),

@@ -24,9 +24,10 @@ class PostgresCounterStore private constructor(private val database: CounterData
       database.counterQueries.adjustValue(counterId, delta).executeAsOne()
 
   companion object {
-    // Build a store over [jdbcUrl] (a full pgjdbc URL with sslmode + credentials as query params),
-    // applying the schema first. Schema.create runs the .sq's CREATE TABLE IF NOT EXISTS, so it is
-    // idempotent across cold starts — no separate migration/versioning step for the single table.
+    /**
+     * Builds a store over [jdbcUrl] (a full pgjdbc URL, credentials as query params), applying the
+     * schema first. Schema creation is idempotent, so there is no separate migration step.
+     */
     fun build(jdbcUrl: String): PostgresCounterStore {
       val driver = PGSimpleDataSource().apply { setUrl(jdbcUrl) }.asJdbcDriver()
       CounterDatabase.Schema.create(driver)

@@ -11,7 +11,7 @@ tasks:
     generates:
       - node_modules/.yarn-state.yml
     cmds:
-      # Using `--immutable` ensures a clean install based on the lockfile
+      # Fails rather than rewriting the lockfile, so an install can't drift from what's committed.
       - yarn install --immutable
 
   openapi:

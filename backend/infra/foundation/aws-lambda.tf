@@ -69,10 +69,8 @@ resource "aws_lambda_function" "api" {
   depends_on = [aws_iam_role_policy_attachment.api_basic_execution]
 }
 
-# The API is fronted by an API Gateway HTTP API: a Lambda-proxy integration with payload format 2.0,
-# so the function receives the same APIGatewayV2HTTPEvent it did from the function URL — no handler
-# change. Every route is gated by the Cognito JWT authorizer below. CloudFront points its /api
-# behavior at this endpoint (see the web foundation).
+# The API is fronted by an API Gateway HTTP API: a Lambda-proxy integration with payload format 2.0.
+# Every route is gated by the Cognito JWT authorizer below.
 resource "aws_apigatewayv2_api" "api" {
   name          = "${module.common.aws_resource_prefix}-api${module.common.resource_name_suffix}"
   protocol_type = "HTTP"

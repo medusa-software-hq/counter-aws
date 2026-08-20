@@ -58,8 +58,7 @@ audience, signature, expiry) and rejects anything invalid before the function ru
 
 The count lives in one row of a **Neon** (serverless Postgres) database, reached through
 **SQLDelight** for type-safe queries. SQLDelight owns the schema — an idempotent `CREATE TABLE IF NOT
-EXISTS` applied at cold start — so there is no separate migration step for the single table; versioned
-`.sqm` migrations can be added when the schema first changes. The connection string is kept in
+EXISTS` applied at cold start — so there is no separate migration step for the single table. The connection string is kept in
 **Secrets Manager** and read by the function at startup, so the password is never in the function's
 plaintext configuration. Local runs and tests swap in an in-memory store.
 
