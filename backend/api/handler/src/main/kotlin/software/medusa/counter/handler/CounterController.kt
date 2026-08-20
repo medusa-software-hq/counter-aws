@@ -7,7 +7,7 @@ import software.medusa.counter.api.controllers.CounterGetController
 import software.medusa.counter.api.controllers.CounterIncrementController
 import software.medusa.counter.api.models.CountReply
 
-/** The HTTP mapping comes from the generated controller interfaces, not from annotations here. */
+/** Serves the counter routes, implementing the interfaces generated from the API contract. */
 @Controller
 open class CounterController(private val store: CounterStore) :
     CounterGetController, CounterIncrementController, CounterDecrementController {

@@ -125,9 +125,9 @@ resource "github_actions_repository_permissions" "this" {
   allowed_actions = "all"
 }
 
-# The prod and staging deployment environments — everything GitHub scopes per environment, plus the
-# branch policy below. Required reviewers would be the obvious promotion gate, but they are
-# Enterprise-only for private repositories.
+#region Deployment environments
+
+# Production environment
 resource "github_repository_environment" "production" {
   repository  = github_repository.this.name
   environment = "production"
@@ -138,12 +138,14 @@ resource "github_repository_environment" "production" {
   }
 }
 
+# Allow deployments only from the trunk branch
 resource "github_repository_environment_deployment_policy" "production_trunk" {
   repository     = github_repository.this.name
   environment    = github_repository_environment.production.environment
   branch_pattern = module.common.gh_default_branch_name
 }
 
+# Staging environment
 resource "github_repository_environment" "staging" {
   repository  = github_repository.this.name
   environment = "staging"
@@ -154,8 +156,11 @@ resource "github_repository_environment" "staging" {
   }
 }
 
+# Allow deployments only from the trunk branch
 resource "github_repository_environment_deployment_policy" "staging_trunk" {
   repository     = github_repository.this.name
   environment    = github_repository_environment.staging.environment
   branch_pattern = module.common.gh_default_branch_name
 }
+
+#endregion
