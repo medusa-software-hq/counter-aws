@@ -99,6 +99,13 @@ jobs:
     name: Test staging
     needs: deploy-staging
     uses: ./.github/workflows/test-staging.yml
+    # The web check only makes an anonymous request, but the gate it shares with the API declares the
+    # token permission for the API's direct invoke. A called workflow may not hold more than the
+    # calling job, and that is settled when the run starts rather than per branch taken -- so a
+    # caller that withholds this stops the whole run from starting.
+    permissions:
+      id-token: write
+      contents: read
     with:
       target: web
       host: ${{ needs.deploy-staging.outputs.web_host }}
