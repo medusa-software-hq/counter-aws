@@ -13,7 +13,10 @@ import software.medusa.counter.cli.config.Environment
 class LoginCommand : AppCommand(name = "login") {
   override fun help(context: Context) = "Sign in through your browser."
 
-  override fun run(environment: Environment, configStore: ConfigStore) {
+  override fun run(
+      environment: Environment,
+      configStore: ConfigStore,
+  ) {
     val cognito =
         environment.cognito
             ?: throw PrintMessage(
@@ -24,9 +27,16 @@ class LoginCommand : AppCommand(name = "login") {
 
     val credentials =
         try {
-          CognitoLogin.authenticate(cognito) { echo(it) }
+          CognitoLogin.authenticate(
+              cognito = cognito,
+              echo = { echo(it) },
+          )
         } catch (e: LoginException) {
-          throw PrintMessage(e.message ?: "Sign-in failed.", statusCode = 1, printError = true)
+          throw PrintMessage(
+              message = e.message ?: "Sign-in failed.",
+              statusCode = 1,
+              printError = true,
+          )
         }
 
     configStore.saveCredentials(credentials)

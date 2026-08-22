@@ -12,9 +12,20 @@ import software.medusa.counter.cli.config.Environment
  * client turns into a "run login" message.
  */
 abstract class ManagementCommand(name: String) : AppCommand(name = name) {
-  final override fun run(environment: Environment, configStore: ConfigStore) {
-    val tokenProvider = CognitoTokenProvider(configStore, environment.cognito)
-    CounterApiClient(environment.apiEndpoint, tokenProvider).use { run(it) }
+  final override fun run(
+      environment: Environment,
+      configStore: ConfigStore,
+  ) {
+    val tokenProvider =
+        CognitoTokenProvider(
+            configStore = configStore,
+            cognito = environment.cognito,
+        )
+    CounterApiClient(
+            endpoint = environment.apiEndpoint,
+            tokenProvider = tokenProvider,
+        )
+        .use { run(it) }
   }
 
   abstract fun run(apiClient: CounterApiClient)

@@ -11,46 +11,136 @@ import software.medusa.counter.cli.api.ApiEndpoint
 class EnvironmentTest {
   @Test
   fun `absent or prod selects Prod`() {
-    assertEquals(Environment.Prod, Environment.current(null, null, null))
-    assertEquals(Environment.Prod, Environment.current("prod", null, null))
+    assertEquals(
+        expected = Environment.Prod,
+        actual =
+            Environment.current(
+                raw = null,
+                localConfigPath = null,
+                localPort = null,
+            ),
+    )
+    assertEquals(
+        expected = Environment.Prod,
+        actual =
+            Environment.current(
+                raw = "prod",
+                localConfigPath = null,
+                localPort = null,
+            ),
+    )
   }
 
   @Test
   fun `staging selects Staging`() {
-    assertEquals(Environment.Staging, Environment.current("staging", null, null))
+    assertEquals(
+        expected = Environment.Staging,
+        actual =
+            Environment.current(
+                raw = "staging",
+                localConfigPath = null,
+                localPort = null,
+            ),
+    )
   }
 
   @Test
   fun `matching is exact — blanks, case, and aliases are rejected`() {
-    assertFailsWith<EnvironmentSelectionException> { Environment.current("", null, null) }
-    assertFailsWith<EnvironmentSelectionException> { Environment.current("PROD", null, null) }
-    assertFailsWith<EnvironmentSelectionException> { Environment.current("production", null, null) }
-    assertFailsWith<EnvironmentSelectionException> { Environment.current(" staging ", null, null) }
-    assertFailsWith<EnvironmentSelectionException> { Environment.current("prd", null, null) }
+    assertFailsWith<EnvironmentSelectionException> {
+      Environment.current(
+          raw = "",
+          localConfigPath = null,
+          localPort = null,
+      )
+    }
+    assertFailsWith<EnvironmentSelectionException> {
+      Environment.current(
+          raw = "PROD",
+          localConfigPath = null,
+          localPort = null,
+      )
+    }
+    assertFailsWith<EnvironmentSelectionException> {
+      Environment.current(
+          raw = "production",
+          localConfigPath = null,
+          localPort = null,
+      )
+    }
+    assertFailsWith<EnvironmentSelectionException> {
+      Environment.current(
+          raw = " staging ",
+          localConfigPath = null,
+          localPort = null,
+      )
+    }
+    assertFailsWith<EnvironmentSelectionException> {
+      Environment.current(
+          raw = "prd",
+          localConfigPath = null,
+          localPort = null,
+      )
+    }
   }
 
   @Test
   fun `local requires config path and a valid port`() {
-    val env = Environment.current("local", "/tmp/x", "8081")
+    val env =
+        Environment.current(
+            raw = "local",
+            localConfigPath = "/tmp/x",
+            localPort = "8081",
+        )
     assertTrue(env is Environment.Local)
-    assertEquals(ApiEndpoint("http://127.0.0.1:8081"), env.apiEndpoint)
-    assertFailsWith<EnvironmentSelectionException> { Environment.current("local", null, "8081") }
-    assertFailsWith<EnvironmentSelectionException> { Environment.current("local", "/tmp/x", null) }
+    assertEquals(
+        expected = ApiEndpoint("http://127.0.0.1:8081"),
+        actual = env.apiEndpoint,
+    )
     assertFailsWith<EnvironmentSelectionException> {
-      Environment.current("local", "/tmp/x", "nope")
+      Environment.current(
+          raw = "local",
+          localConfigPath = null,
+          localPort = "8081",
+      )
+    }
+    assertFailsWith<EnvironmentSelectionException> {
+      Environment.current(
+          raw = "local",
+          localConfigPath = "/tmp/x",
+          localPort = null,
+      )
+    }
+    assertFailsWith<EnvironmentSelectionException> {
+      Environment.current(
+          raw = "local",
+          localConfigPath = "/tmp/x",
+          localPort = "nope",
+      )
     }
   }
 
   @Test
   fun `prod and staging are fully partitioned`() {
     val base = Path.of("/base")
-    assertEquals(Path.of("/base/prod"), Environment.Prod.resolveConfigDirPath(base))
-    assertEquals(Path.of("/base/staging"), Environment.Staging.resolveConfigDirPath(base))
-    assertNotEquals(
-        Environment.Prod.resolveConfigDirPath(base),
-        Environment.Staging.resolveConfigDirPath(base),
+    assertEquals(
+        expected = Path.of("/base/prod"),
+        actual = Environment.Prod.resolveConfigDirPath(baseConfigPath = base),
     )
-    assertEquals(null, Environment.Prod.marker)
-    assertEquals("[staging]", Environment.Staging.marker)
+    assertEquals(
+        expected = Path.of("/base/staging"),
+        actual = Environment.Staging.resolveConfigDirPath(baseConfigPath = base),
+    )
+    assertNotEquals(
+        illegal = Environment.Prod.resolveConfigDirPath(baseConfigPath = base),
+        actual = Environment.Staging.resolveConfigDirPath(baseConfigPath = base),
+    )
+    assertEquals(
+        expected = null,
+        actual = Environment.Prod.marker,
+    )
+    assertEquals(
+        expected = "[staging]",
+        actual = Environment.Staging.marker,
+    )
   }
 }

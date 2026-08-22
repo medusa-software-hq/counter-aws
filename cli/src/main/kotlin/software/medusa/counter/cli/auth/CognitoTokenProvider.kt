@@ -36,7 +36,10 @@ class CognitoTokenProvider(
 
     val refreshed =
         try {
-          CognitoLogin.refresh(cognito, credentials.refreshToken)
+          CognitoLogin.refresh(
+              cognito = cognito,
+              refreshToken = credentials.refreshToken,
+          )
         } catch (e: LoginException) {
           // The refresh token was rejected (expired/revoked); treat it as signed out.
           return null

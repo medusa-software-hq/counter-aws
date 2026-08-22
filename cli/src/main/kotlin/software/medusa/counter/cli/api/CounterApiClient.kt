@@ -19,7 +19,10 @@ import software.medusa.counter.cli.auth.TokenProvider
  * runs open, so a missing token is fine there; prod and staging reject with a 401). The CLI uses
  * one client per command.
  */
-class CounterApiClient(endpoint: ApiEndpoint, tokenProvider: TokenProvider) : AutoCloseable {
+class CounterApiClient(
+    endpoint: ApiEndpoint,
+    tokenProvider: TokenProvider,
+) : AutoCloseable {
   private val httpClient: OkHttpClient =
       OkHttpClient.Builder()
           .apply { tokenProvider.provideToken()?.let { token -> addInterceptor(OAuth2 { token }) } }
@@ -27,9 +30,24 @@ class CounterApiClient(endpoint: ApiEndpoint, tokenProvider: TokenProvider) : Au
 
   private val objectMapper: ObjectMapper = ObjectMapper().registerKotlinModule()
 
-  private val getClient = CounterGetClient(objectMapper, endpoint.baseUrl, httpClient)
-  private val incrementClient = CounterIncrementClient(objectMapper, endpoint.baseUrl, httpClient)
-  private val decrementClient = CounterDecrementClient(objectMapper, endpoint.baseUrl, httpClient)
+  private val getClient =
+      CounterGetClient(
+          objectMapper = objectMapper,
+          baseUrl = endpoint.baseUrl,
+          okHttpClient = httpClient,
+      )
+  private val incrementClient =
+      CounterIncrementClient(
+          objectMapper = objectMapper,
+          baseUrl = endpoint.baseUrl,
+          okHttpClient = httpClient,
+      )
+  private val decrementClient =
+      CounterDecrementClient(
+          objectMapper = objectMapper,
+          baseUrl = endpoint.baseUrl,
+          okHttpClient = httpClient,
+      )
 
   fun getCount(): Long = call { getClient.getCount().body() }
 

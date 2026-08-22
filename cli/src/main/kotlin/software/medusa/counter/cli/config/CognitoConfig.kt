@@ -6,4 +6,7 @@ package software.medusa.counter.cli.config
  * when these weren't baked into the build (they come from per-environment CI variables — see
  * [EnvironmentConfig]), and `login` reports that cleanly.
  */
-data class CognitoConfig(val issuer: String, val clientId: String)
+data class CognitoConfig(
+    val issuer: String,
+    val clientId: String,
+)
