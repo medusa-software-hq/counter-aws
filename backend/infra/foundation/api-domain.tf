@@ -30,6 +30,9 @@ resource "aws_acm_certificate_validation" "api" {
   validation_record_fqdns = [for r in cloudflare_dns_record.api_cert_validation : r.name]
 }
 
+# API Gateway creates this through its account-level service-linked role, which the meta repo
+# provisions once for the account. Creating that role needs account-wide permissions the CI/CD role
+# is deliberately not granted, so a domain here cannot bring it into being.
 resource "aws_apigatewayv2_domain_name" "api" {
   domain_name = module.environment.api_host_name
 
