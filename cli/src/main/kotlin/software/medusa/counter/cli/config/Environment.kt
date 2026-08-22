@@ -48,7 +48,11 @@ sealed interface Environment {
    */
   sealed class Remote(internal val config: EnvironmentConfig) : Environment {
     final override val apiEndpoint = ApiEndpoint("https://${config.apiHost}")
-    final override val cognito = cognitoOrNull(config.cognitoIssuer, config.cognitoClientId)
+    final override val cognito =
+        cognitoOrNull(
+            issuer = config.cognitoIssuer,
+            clientId = config.cognitoClientId,
+        )
 
     final override fun resolveConfigDirPath(baseConfigPath: Path): Path =
         baseConfigPath.resolve(label)
@@ -68,7 +72,10 @@ sealed interface Environment {
    * A developer's local backend. Requires an explicit config path (a temp dir in practice, keeping
    * hermetic tests parallel-safe) and port.
    */
-  data class Local(private val configDir: Path, val port: Int) : Environment {
+  data class Local(
+      private val configDir: Path,
+      val port: Int,
+  ) : Environment {
     companion object {
       const val LABEL = "local"
     }
@@ -89,8 +96,16 @@ sealed interface Environment {
     const val LOCAL_PORT_ENV = "COUNTER_API_LOCAL_PORT"
 
     /** A [CognitoConfig] from the baked issuer + client id, or null when either wasn't baked in. */
-    private fun cognitoOrNull(issuer: String, clientId: String): CognitoConfig? =
-        if (issuer.isNotBlank() && clientId.isNotBlank()) CognitoConfig(issuer, clientId) else null
+    private fun cognitoOrNull(
+        issuer: String,
+        clientId: String,
+    ): CognitoConfig? =
+        if (issuer.isNotBlank() && clientId.isNotBlank())
+            CognitoConfig(
+                issuer = issuer,
+                clientId = clientId,
+            )
+        else null
 
     /**
      * Resolve the environment for this invocation from the `COUNTER_ENVIRONMENT` selector (the
@@ -98,12 +113,20 @@ sealed interface Environment {
      * labels verbatim; `local` requires both local variables. Anything else, or a misconfigured
      * `local`, raises [EnvironmentSelectionException] for a clean top-level message.
      */
-    fun current(raw: String?, localConfigPath: String?, localPort: String?): Environment =
+    fun current(
+        raw: String?,
+        localConfigPath: String?,
+        localPort: String?,
+    ): Environment =
         when (raw) {
           null,
           Prod.label -> Prod
           Staging.label -> Staging
-          Local.LABEL -> local(localConfigPath, localPort)
+          Local.LABEL ->
+              local(
+                  localConfigPath = localConfigPath,
+                  localPort = localPort,
+              )
           else ->
               throw EnvironmentSelectionException(
                   "Unknown $ENV_VAR '$raw'. Valid values: ${Prod.label} (default), " +
@@ -111,7 +134,10 @@ sealed interface Environment {
               )
         }
 
-    private fun local(localConfigPath: String?, localPort: String?): Local {
+    private fun local(
+        localConfigPath: String?,
+        localPort: String?,
+    ): Local {
       val path =
           localConfigPath?.ifBlank { null }
               ?: throw EnvironmentSelectionException(
@@ -127,7 +153,10 @@ sealed interface Environment {
               ?: throw EnvironmentSelectionException(
                   "$LOCAL_PORT_ENV must be a port number (1–65535), got '$portText'."
               )
-      return Local(Path.of(path), port)
+      return Local(
+          configDir = Path.of(path),
+          port = port,
+      )
     }
   }
 }

@@ -39,7 +39,10 @@ object CognitoLogin {
   private val SCOPE = Scope("openid", "email", "profile")
   private val LOGIN_TIMEOUT: Duration = Duration.ofMinutes(5)
 
-  fun authenticate(cognito: CognitoConfig, echo: (String) -> Unit): Credentials {
+  fun authenticate(
+      cognito: CognitoConfig,
+      echo: (String) -> Unit,
+  ): Credentials {
     val metadata = discover(cognito.issuer)
     val clientId = ClientID(cognito.clientId)
     val redirectUri = URI(REDIRECT_URI)
@@ -53,38 +56,50 @@ object CognitoLogin {
             .codeChallenge(verifier, CodeChallengeMethod.S256)
             .build()
 
-    CallbackServer(REDIRECT_PORT, REDIRECT_PATH).use { server ->
-      echo(
-          "Opening your browser to sign in. If it doesn't open, visit:\n\n  ${authRequest.toURI()}\n"
-      )
-      openBrowser(authRequest.toURI())
-
-      val callback = server.awaitCallback(LOGIN_TIMEOUT)
-      if (callback["state"] != state.value) {
-        throw LoginException("Sign-in failed: state mismatch (possible CSRF). Please try again.")
-      }
-      callback["error"]?.let { error ->
-        val description = callback["error_description"]?.let { " ($it)" }.orEmpty()
-        throw LoginException("Sign-in was denied or failed: $error$description.")
-      }
-      val code =
-          callback["code"]
-              ?: throw LoginException("Sign-in failed: no authorization code returned.")
-
-      val tokens =
-          exchange(
-              TokenRequest.Builder(
-                      metadata.tokenEndpointURI,
-                      clientId,
-                      AuthorizationCodeGrant(AuthorizationCode(code), redirectUri, verifier),
-                  )
-                  .build()
+    CallbackServer(
+            port = REDIRECT_PORT,
+            path = REDIRECT_PATH,
+        )
+        .use { server ->
+          echo(
+              "Opening your browser to sign in. If it doesn't open, visit:\n\n  ${authRequest.toURI()}\n"
           )
-      return credentialsFrom(tokens, fallbackRefreshToken = null)
-    }
+          openBrowser(authRequest.toURI())
+
+          val callback = server.awaitCallback(LOGIN_TIMEOUT)
+          if (callback["state"] != state.value) {
+            throw LoginException(
+                "Sign-in failed: state mismatch (possible CSRF). Please try again."
+            )
+          }
+          callback["error"]?.let { error ->
+            val description = callback["error_description"]?.let { " ($it)" }.orEmpty()
+            throw LoginException("Sign-in was denied or failed: $error$description.")
+          }
+          val code =
+              callback["code"]
+                  ?: throw LoginException("Sign-in failed: no authorization code returned.")
+
+          val tokens =
+              exchange(
+                  TokenRequest.Builder(
+                          metadata.tokenEndpointURI,
+                          clientId,
+                          AuthorizationCodeGrant(AuthorizationCode(code), redirectUri, verifier),
+                      )
+                      .build()
+              )
+          return credentialsFrom(
+              tokens = tokens,
+              fallbackRefreshToken = null,
+          )
+        }
   }
 
-  fun refresh(cognito: CognitoConfig, refreshToken: String): Credentials {
+  fun refresh(
+      cognito: CognitoConfig,
+      refreshToken: String,
+  ): Credentials {
     val metadata = discover(cognito.issuer)
     val tokens =
         exchange(
@@ -96,7 +111,10 @@ object CognitoLogin {
                 .build()
         )
     // Cognito doesn't rotate the refresh token, so carry the existing one forward.
-    return credentialsFrom(tokens, fallbackRefreshToken = refreshToken)
+    return credentialsFrom(
+        tokens = tokens,
+        fallbackRefreshToken = refreshToken,
+    )
   }
 
   private fun discover(issuer: String): OIDCProviderMetadata =
@@ -117,14 +135,21 @@ object CognitoLogin {
     return (response as OIDCTokenResponse).oidcTokens
   }
 
-  private fun credentialsFrom(tokens: OIDCTokens, fallbackRefreshToken: String?): Credentials {
+  private fun credentialsFrom(
+      tokens: OIDCTokens,
+      fallbackRefreshToken: String?,
+  ): Credentials {
     val idToken: JWT = tokens.idToken
     val expiresAt = idToken.jwtClaimsSet.expirationTime.toInstant().epochSecond
     val refreshToken =
         tokens.refreshToken?.value
             ?: fallbackRefreshToken
             ?: throw LoginException("Cognito did not return a refresh token.")
-    return Credentials(tokens.idTokenString, refreshToken, expiresAt)
+    return Credentials(
+        idToken = tokens.idTokenString,
+        refreshToken = refreshToken,
+        expiresAtEpochSeconds = expiresAt,
+    )
   }
 
   /**

@@ -25,25 +25,43 @@ abstract class AppCommand(name: String) : CliktCommand(name = name) {
               System.getenv(Environment.LOCAL_PORT_ENV),
           )
         } catch (e: EnvironmentSelectionException) {
-          throw PrintMessage(e.message ?: "Bad environment.", statusCode = 2, printError = true)
+          throw PrintMessage(
+              message = e.message ?: "Bad environment.",
+              statusCode = 2,
+              printError = true,
+          )
         }
 
     // Non-prod sessions announce themselves on stderr so a human can't mix environments.
     environment.marker?.let { echo(dimmedForStderr(it), err = true) }
 
-    val configStore = ConfigStore(environment.resolveConfigDirPath(counterConfigBase()))
+    val configStore =
+        ConfigStore(dir = environment.resolveConfigDirPath(baseConfigPath = counterConfigBase()))
 
     try {
-      run(environment, configStore)
+      run(
+          environment = environment,
+          configStore = configStore,
+      )
     } catch (e: ApiException) {
-      throw PrintMessage(e.message ?: "API error.", statusCode = 1, printError = true)
+      throw PrintMessage(
+          message = e.message ?: "API error.",
+          statusCode = 1,
+          printError = true,
+      )
     }
   }
 
-  abstract fun run(environment: Environment, configStore: ConfigStore)
+  abstract fun run(
+      environment: Environment,
+      configStore: ConfigStore,
+  )
 
   private fun counterConfigBase(): Path =
-      ConfigBaseDir.resolve(System.getenv("XDG_CONFIG_HOME"), System.getProperty("user.home"))
+      ConfigBaseDir.resolve(
+          xdgConfigHome = System.getenv("XDG_CONFIG_HOME"),
+          userHome = System.getProperty("user.home"),
+      )
 }
 
 /** [text] wrapped in ANSI dim, but only when stderr is an interactive terminal (else plain). */

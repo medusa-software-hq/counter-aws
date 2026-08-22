@@ -13,7 +13,10 @@ import java.util.concurrent.TimeUnit
  * Cognito app-client registers as its callback, hands the browser a "you can close this tab" page,
  * and exposes the redirect's query parameters to the waiting login flow. Closing it frees the port.
  */
-class CallbackServer(port: Int, private val path: String) : AutoCloseable {
+class CallbackServer(
+    port: Int,
+    private val path: String,
+) : AutoCloseable {
   private val server: HttpServer = HttpServer.create(InetSocketAddress("127.0.0.1", port), 0)
   private val received = SynchronousQueue<Map<String, String>>()
 

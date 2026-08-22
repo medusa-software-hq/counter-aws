@@ -11,7 +11,10 @@ import java.nio.file.Path
 object ConfigBaseDir {
   private const val CONFIG_DIR_NAME = "ms-counter"
 
-  fun resolve(xdgConfigHome: String?, userHome: String): Path {
+  fun resolve(
+      xdgConfigHome: String?,
+      userHome: String,
+  ): Path {
     val base =
         if (!xdgConfigHome.isNullOrBlank()) Path.of(xdgConfigHome) else Path.of(userHome, ".config")
     return base.resolve(CONFIG_DIR_NAME)

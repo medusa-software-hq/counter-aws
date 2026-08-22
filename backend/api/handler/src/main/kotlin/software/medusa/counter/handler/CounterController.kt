@@ -12,11 +12,12 @@ import software.medusa.counter.api.models.CountReply
 class CounterController(private val store: CounterStore) :
     CounterGetController, CounterIncrementController, CounterDecrementController {
 
-  override fun getCount(): HttpResponse<CountReply> = HttpResponse.ok(CountReply(store.current()))
+  override fun getCount(): HttpResponse<CountReply> =
+      HttpResponse.ok(CountReply(count = store.current()))
 
   override fun incrementCount(): HttpResponse<CountReply> =
-      HttpResponse.ok(CountReply(store.increment()))
+      HttpResponse.ok(CountReply(count = store.increment()))
 
   override fun decrementCount(): HttpResponse<CountReply> =
-      HttpResponse.ok(CountReply(store.decrement()))
+      HttpResponse.ok(CountReply(count = store.decrement()))
 }

@@ -15,14 +15,19 @@ class PostgresCounterStore private constructor(private val database: CounterData
     CounterStore {
 
   override fun current(): Long =
-      database.counterQueries.selectValue(counterId).executeAsOneOrNull() ?: 0L
+      database.counterQueries.selectValue(id = counterId).executeAsOneOrNull() ?: 0L
 
   override fun increment(): Long = adjust(1)
 
   override fun decrement(): Long = adjust(-1)
 
   private fun adjust(delta: Long): Long =
-      database.counterQueries.adjustValue(counterId, delta).executeAsOne()
+      database.counterQueries
+          .adjustValue(
+              id = counterId,
+              value_ = delta,
+          )
+          .executeAsOne()
 
   companion object {
     /**
@@ -32,7 +37,7 @@ class PostgresCounterStore private constructor(private val database: CounterData
     fun build(jdbcUrl: String): PostgresCounterStore {
       val driver = PGSimpleDataSource().apply { setUrl(jdbcUrl) }.asJdbcDriver()
       CounterDatabase.Schema.create(driver)
-      return PostgresCounterStore(CounterDatabase(driver))
+      return PostgresCounterStore(database = CounterDatabase(driver))
     }
   }
 }
