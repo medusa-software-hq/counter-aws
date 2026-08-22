@@ -1,8 +1,11 @@
 # Configuration
 #
-# What this variant needs exactly once, whatever the environment: the CI/CD role, the CLI releases
-# repo + its Actions variable, and the API Gateway service-linked role. Applied once (no workspaces),
-# with the operator's credentials.
+# What this variant needs exactly once, whatever the environment: the CI/CD role, and the CLI
+# releases repo with the Actions variables the workflows read. Applied once (no workspaces), with the
+# operator's credentials.
+#
+# Once per *account* is a different tier and belongs in the meta repo. This root is applied once per
+# project, so anything account-wide put here would collide with the next project to apply it.
 
 terraform {
   required_version = ">= 1.14"
