@@ -4,14 +4,14 @@
 # each get their own pool), operator-applied with the rest of the root infra.
 #
 # The SAML trust is bidirectional and the IdC half is a console action, so *standing up a new
-# environment* takes two passes — see "Adding an environment" in the README. Every environment that
+# environment* takes two passes. Every environment that
 # exists is past that: an environment with no metadata URL below fails the plan rather than applying
 # a pool that cannot federate.
 
 # IdC SAML application metadata URL, per environment — each pool federates to its own IdC app,
 # created with `automaton aws saml create`.
-# 🎨 TEMPLATE POST-EJECT: Create a SAML application per environment (see "Adding an environment" in
-# the infra README) and replace these URLs with the ones IdC returns 👇
+# 🎨 TEMPLATE POST-EJECT: Create a SAML application per environment and replace these URLs with the
+# ones IdC returns 👇
 variable "idc_saml_metadata_urls" {
   description = "IdC SAML application metadata URL per environment."
   type        = map(string)
