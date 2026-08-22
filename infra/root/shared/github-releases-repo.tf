@@ -5,7 +5,7 @@
 # homebrew-tap) and is NOT managed here — this project only pushes counter.rb to
 # it via the "Medusa Counter Releaser" GitHub App.
 #
-# 🎨 TEMPLATE POST-EJECT: install the releaser GitHub App on this repo, on the
+# 🎨 TEMPLATE BOOTSTRAP: install the releaser GitHub App on this repo, on the
 # releases repo below, and on the shared homebrew-tap.
 resource "github_repository" "counter_releases" {
   name        = module.global.gh_releases_repo_name

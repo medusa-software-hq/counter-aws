@@ -3,7 +3,7 @@
 terraform {
   required_version = ">= 1.14"
 
-  # 🎨 TEMPLATE EJECT: Change the state bucket + key (backends take no variables)
+  # 🎨 TEMPLATE EJECT: Change the state key to this project's prefix (backends take no variables)
   backend "s3" {
     bucket       = "ms-tfstate-aws-682544514886"
     key          = "projects/counter/aws/web-app/foundation/terraform.tfstate"
