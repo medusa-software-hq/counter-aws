@@ -1,17 +1,6 @@
-# Backend API Terraform configuration
+# API infrastructure
 
-Provisions the resources the API needs, per environment (one Terraform workspace
-each):
-
-- the API Lambda — a GraalVM-native custom-runtime zip — and its execution role
-- an API Gateway HTTP API in front of it, with a Cognito JWT authorizer gating
-  every route
-- the API's custom domain: an ACM certificate validated over Cloudflare DNS, the
-  domain's API mapping, and the public DNS record
-- a **Neon serverless Postgres** project backing the counter store
-- a Secrets Manager secret holding the Neon JDBC connection string; the Lambda
-  gets the secret's **ARN** as an environment variable and reads the string at
-  startup, so the password never lands in the function's plaintext config
+What the API needs to run, one instance per environment.
 
 ## Neon provisioning
 
@@ -24,9 +13,6 @@ opens one short-lived connection per request at low volume, so it stays well wit
 Neon's direct-connection limit and gains nothing from PgBouncer. The URL is built
 from Neon's structured attributes rather than its `connection_uri`, because pgjdbc
 rejects libpq-style `user:password@host` userinfo.
-
-The schema is owned by SQLDelight and applied by the handler on a cold start; there
-is no separate migration tool.
 
 ## Note: database credentials in Terraform state
 
