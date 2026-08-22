@@ -218,3 +218,7 @@ output "spa_bucket_name" {
 output "cloudfront_distribution_id" {
   value = aws_cloudfront_distribution.spa.id
 }
+
+output "web_host" {
+  value = module.environment.web_host_name
+}

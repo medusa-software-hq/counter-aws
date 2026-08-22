@@ -29,7 +29,7 @@ concurrency:
 
 env:
   AWS_REGION: eu-central-1
-  AWS_ROLE_ARN: arn:aws:iam::682544514886:role/counter-aws-github-actions
+  AWS_ROLE_ARN: ${{ vars.AWS_CICD_ROLE_ARN }}
   NODE_VERSION: "24"
   TERRAFORM_VERSION: 1.14
   FRONTEND_PATH: web-app/frontend
@@ -39,6 +39,8 @@ jobs:
     name: Deploy staging
     runs-on: ubuntu-latest
     environment: staging
+    outputs:
+      web_host: ${{ steps.foundation.outputs.web_host }}
     permissions:
       id-token: write # assume the CI/CD role via OIDC
       contents: read
@@ -81,6 +83,7 @@ jobs:
           {
             echo "bucket=$(terraform output -raw spa_bucket_name)"
             echo "distribution_id=$(terraform output -raw cloudfront_distribution_id)"
+            echo "web_host=$(terraform output -raw web_host)"
           } >> "$GITHUB_OUTPUT"
       - name: Publish the bundle
         env:
@@ -98,6 +101,7 @@ jobs:
     uses: ./.github/workflows/test-staging.yml
     with:
       target: web
+      host: ${{ needs.deploy-staging.outputs.web_host }}
 
   deploy-production:
     name: Deploy production

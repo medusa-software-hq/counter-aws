@@ -8,6 +8,9 @@ name: Test staging
 # authorizer before it reaches the function, so a function that cannot even start would pass. The API
 # check therefore also invokes it directly, which needs credentials.
 #
+# The caller passes what it just deployed, read back from that surface's own Terraform outputs, so
+# the gate checks the deployment rather than a name rebuilt from the same inputs.
+#
 # The checks retry: the first staging deploy of a surface creates its host + Cloudflare DNS record
 # from scratch, which takes a short while to resolve on the runner, so a single request would
 # false-fail the gate.
@@ -18,6 +21,14 @@ on:
       target:
         description: "Which staging surface to check: 'api' or 'web'."
         required: true
+        type: string
+      host:
+        description: "Public host of the staging surface being checked."
+        required: true
+        type: string
+      function-name:
+        description: "Function to invoke directly, for the 'api' target."
+        required: false
         type: string
       aws-region:
         description: "Region holding the function, for the 'api' target."
@@ -39,8 +50,10 @@ jobs:
     steps:
       - name: Staging API rejects unauthenticated calls
         if: inputs.target == 'api'
+        env:
+          HOST: ${{ inputs.host }}
         run: |
-          url="https://api.counter-aws-staging.medusa.software/counter/get"
+          url="https://$HOST/counter/get"
           for attempt in $(seq 1 10); do
             code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "$url" || true)
             echo "attempt $attempt: GET $url -> $code"
@@ -69,6 +82,7 @@ jobs:
         if: inputs.target == 'api'
         env:
           AWS_REGION: ${{ inputs.aws-region }}
+          FUNCTION_NAME: ${{ inputs.function-name }}
         run: |
           # Past the authorizer the public endpoint cannot reach, so this is the only check that the
           # deployed binary starts, reads its configuration and talks to the database.
@@ -76,7 +90,7 @@ jobs:
           printf '%s' '{"version":"2.0","rawPath":"/counter/get","requestContext":' > event.json
           printf '%s' '{"http":{"method":"GET","path":"/counter/get"}}}' >> event.json
           for attempt in $(seq 1 3); do
-            if aws lambda invoke --function-name counter-aws-api-staging \
+            if aws lambda invoke --function-name "$FUNCTION_NAME" \
               --cli-binary-format raw-in-base64-out \
               --payload file://event.json response.json > invoke.json 2>&1; then
               if grep -q FunctionError invoke.json; then
@@ -99,8 +113,10 @@ jobs:
 
       - name: Staging SPA is served
         if: inputs.target == 'web'
+        env:
+          HOST: ${{ inputs.host }}
         run: |
-          url="https://counter-aws-staging.medusa.software/"
+          url="https://$HOST/"
           for attempt in $(seq 1 10); do
             code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "$url" || true)
             echo "attempt $attempt: GET $url -> $code"

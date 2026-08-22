@@ -32,7 +32,7 @@ concurrency:
 
 env:
   AWS_REGION: eu-central-1
-  AWS_ROLE_ARN: arn:aws:iam::682544514886:role/counter-aws-github-actions
+  AWS_ROLE_ARN: ${{ vars.AWS_CICD_ROLE_ARN }}
   JAVA_VERSION: "21"
   TERRAFORM_VERSION: 1.14
   LAMBDA_ZIP_PATH: backend/api/handler/build/libs/handler-1.0.0-lambda.zip
@@ -70,6 +70,9 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     environment: staging
+    outputs:
+      api_host: ${{ steps.foundation.outputs.api_host }}
+      function_name: ${{ steps.foundation.outputs.function_name }}
     permissions:
       id-token: write # assume the CI/CD role via OIDC
       contents: read
@@ -88,6 +91,7 @@ jobs:
         with:
           terraform_version: ~> ${{ env.TERRAFORM_VERSION }}
       - name: Apply the API foundation (staging workspace)
+        id: foundation
         working-directory: backend/infra/foundation
         env:
           TF_VAR_neon_api_key: ${{ secrets.NEON_API_KEY }}
@@ -100,6 +104,10 @@ jobs:
           terraform init -input=false
           terraform workspace select -or-create=true staging
           terraform apply -auto-approve -input=false
+          {
+            echo "api_host=$(terraform output -raw api_host)"
+            echo "function_name=$(terraform output -raw api_function_name)"
+          } >> "$GITHUB_OUTPUT"
 
   test-staging:
     name: Test staging
@@ -110,8 +118,10 @@ jobs:
       contents: read
     with:
       target: api
+      host: ${{ needs.deploy-staging.outputs.api_host }}
+      function-name: ${{ needs.deploy-staging.outputs.function_name }}
       aws-region: eu-central-1
-      aws-role-arn: arn:aws:iam::682544514886:role/counter-aws-github-actions
+      aws-role-arn: ${{ vars.AWS_CICD_ROLE_ARN }}
 
   deploy-production:
     name: Deploy production
