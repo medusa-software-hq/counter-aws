@@ -9,7 +9,7 @@ import software.medusa.counter.api.models.CountReply
 
 /** Serves the counter routes, implementing the interfaces generated from the API contract. */
 @Controller
-open class CounterController(private val store: CounterStore) :
+class CounterController(private val store: CounterStore) :
     CounterGetController, CounterIncrementController, CounterDecrementController {
 
   override fun getCount(): HttpResponse<CountReply> = HttpResponse.ok(CountReply(store.current()))
