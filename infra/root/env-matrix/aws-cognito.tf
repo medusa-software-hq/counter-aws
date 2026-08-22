@@ -10,7 +10,7 @@
 
 # IdC SAML application metadata URL, per environment — each pool federates to its own IdC app,
 # created with `automaton aws saml create`.
-# 🎨 TEMPLATE POST-EJECT: Create a SAML application per environment and replace these URLs with the
+# 🎨 TEMPLATE BOOTSTRAP: Create a SAML application per environment and replace these URLs with the
 # ones IdC returns 👇
 variable "idc_saml_metadata_urls" {
   description = "IdC SAML application metadata URL per environment."

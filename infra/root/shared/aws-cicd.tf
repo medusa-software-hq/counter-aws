@@ -6,9 +6,9 @@ data "aws_iam_openid_connect_provider" "github" {
 
 locals {
   aws_state_bucket_arn = "arn:aws:s3:::${module.global.aws_state_bucket_name}"
-  # Counter's state lives under this prefix (and under env:/<workspace>/… for
+  # This project's state lives under this prefix (and under env:/<workspace>/… for
   # non-default workspaces).
-  aws_state_prefix = "projects/${module.global.project_base_name}/${module.global.project_variant}"
+  aws_state_prefix = module.global.aws_state_prefix
 
   # CI/CD applies only the two app foundations, so it reaches only their state —
   # not root/shared or root/env-matrix, which the operator applies. root/shared

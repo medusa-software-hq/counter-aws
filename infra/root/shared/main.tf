@@ -1,13 +1,13 @@
 # Configuration
 #
-# Account-level singletons for this variant, shared across environments: the CI/CD role + registry,
-# the CLI releases repo + its Actions variable, and the API Gateway service-linked role. Applied once
-# (no workspaces), with the operator's credentials.
+# What this variant needs exactly once, whatever the environment: the CI/CD role, the CLI releases
+# repo + its Actions variable, and the API Gateway service-linked role. Applied once (no workspaces),
+# with the operator's credentials.
 
 terraform {
   required_version = ">= 1.14"
 
-  # 🎨 TEMPLATE EJECT: Change the state bucket + key (backends take no variables)
+  # 🎨 TEMPLATE EJECT: Change the state key to this project's prefix (backends take no variables)
   backend "s3" {
     bucket       = "ms-tfstate-aws-682544514886"
     key          = "projects/counter/aws/root/shared/terraform.tfstate"

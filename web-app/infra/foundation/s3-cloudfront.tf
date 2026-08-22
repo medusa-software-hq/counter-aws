@@ -29,9 +29,9 @@ data "terraform_remote_state" "api" {
   workspace = terraform.workspace
 
   config = {
-    bucket = "ms-tfstate-aws-682544514886"
-    key    = "projects/counter/aws/backend/foundation/terraform.tfstate"
-    region = "eu-central-1"
+    bucket = module.global.aws_state_bucket_name
+    key    = "${module.global.aws_state_prefix}/backend/foundation/terraform.tfstate"
+    region = module.global.aws_primary_location
   }
 }
 
