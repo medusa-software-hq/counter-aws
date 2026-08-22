@@ -2,7 +2,6 @@ import io.micronaut.gradle.docker.NativeImageDockerfile
 
 plugins {
   alias(libs.plugins.kotlin.jvm)
-  alias(libs.plugins.kotlin.allopen)
   alias(libs.plugins.ksp)
   alias(libs.plugins.micronaut.application)
   alias(libs.plugins.micronaut.aot)
