@@ -2,16 +2,16 @@
 
 The lowest-level configuration, split by lifecycle:
 
-| Path               | State / workspaces                          | Holds                                                                 |
-| ------------------ | ------------------------------------------- | --------------------------------------------------------------------- |
-| `root/shared/`     | one state, no workspaces                    | Account-level singletons: the CI/CD role, the releases repo + its Actions variable, the API Gateway service-linked role. |
-| `root/env-matrix/` | one workspace per environment (`prod`, `staging`) | Per-environment resources: the Cognito user pool + IdC federation and the `COGNITO_*` Actions variables. |
-| `config/`          | pure locals, no cloud auth                  | The author-derived values emitted to `config.json` (hosts, env metadata) that the CLI and other non-Terraform consumers read. |
-| `common/global/`   | module (no state)                           | Values with no environment dimension — project and organization names, account, region, state bucket. |
-| `common/environment/` | module (no state)                        | The per-environment values, resolved from the workspace. Roots without an environment do not import it. |
+| Path                  | State / workspaces                                | Role                                                             |
+| --------------------- | ------------------------------------------------- | ---------------------------------------------------------------- |
+| `root/shared/`        | one state, no workspaces                          | What exists once for the account, whatever the environment.       |
+| `root/env-matrix/`    | one workspace per environment (`prod`, `staging`) | The identity plane, one instance per environment.                 |
+| `common/global/`      | module (no state)                                 | Everything this project declares that no environment varies, and the source `config.json` is emitted from. |
+| `common/environment/` | module (no state)                                 | Resolves one environment from the workspace. A root without an environment does not import it. |
+| `config/`             | no Terraform                                      | Holds the emitted `config.json` for consumers that cannot run Terraform. |
 
-Both roots are applied with the operator's credentials (they manage IAM and account singletons the
-CI/CD role can't). `config/` needs no cloud access at all.
+Both roots are applied with the operator's credentials: they manage IAM and account singletons the
+CI/CD role deliberately cannot touch.
 
 ## Adding an environment
 
