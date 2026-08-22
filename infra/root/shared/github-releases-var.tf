@@ -7,3 +7,11 @@ resource "github_actions_variable" "gh_releases_client_id" {
   variable_name = "GH_RELEASES_CLIENT_ID"
   value         = module.global.gh_releases_client_id
 }
+
+# The releases repo the Publish CLI workflow cuts releases against. It scopes its App token to that
+# repo before doing anything else, so it needs the name up front.
+resource "github_actions_variable" "gh_releases_repo_name" {
+  repository    = data.github_repository.this.name
+  variable_name = "GH_RELEASES_REPO_NAME"
+  value         = github_repository.counter_releases.name
+}

@@ -57,3 +57,7 @@ resource "cloudflare_dns_record" "api" {
   ttl     = 1 # "automatic"
   proxied = false
 }
+
+output "api_host" {
+  value = module.environment.api_host_name
+}

@@ -228,3 +228,11 @@ resource "aws_iam_role_policy" "cicd" {
     ]
   })
 }
+
+# The role's ARN, published where the deploy workflows can read it. A workflow has to assume this
+# role before it can read any Terraform state, so the one value it cannot look up is this one.
+resource "github_actions_variable" "aws_cicd_role_arn" {
+  repository    = data.github_repository.this.name
+  variable_name = "AWS_CICD_ROLE_ARN"
+  value         = aws_iam_role.cicd.arn
+}
