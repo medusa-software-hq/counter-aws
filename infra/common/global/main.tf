@@ -27,11 +27,15 @@ locals {
 
   gh_organization_name = "medusa-software-hq"
 
-  aws_account_id       = "682544514886"
+  # The account internal projects deploy into, which is not the organization's management account --
+  # that one can create and close accounts and set organization policy, and deploys nothing.
+  aws_account_id       = "452857281721"
   aws_primary_location = "eu-central-1"
 
-  # Keyed per repo. Also hard-coded in the backend blocks, which take no variables.
-  aws_state_bucket_name = "ms-tfstate-aws-${local.aws_account_id}"
+  # Keyed per repo, and held in the management account rather than the one above: a project that kept
+  # its own state could rewrite the record of itself. Spelled out for that reason rather than derived
+  # from the account. Also hard-coded in the backend blocks, which take no variables.
+  aws_state_bucket_name = "ms-tfstate-aws-682544514886"
 
   # The prefix every one of this project's state keys sits under. The backend blocks spell it out
   # again, so a change here has to be made there too.
