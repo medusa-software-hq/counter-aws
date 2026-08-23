@@ -1,0 +1,111 @@
+name: Destroy environment
+
+# Takes an environment's application infrastructure back down: the web foundation, then the API
+# foundation. Dispatched by hand, never on a push.
+#
+# The identity plane is not in scope. It is operator-applied, and it needs no credential this
+# repository holds only in CI, so it stays with the rest of the operator-applied infrastructure.
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Which environment to destroy."
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      confirm:
+        description: "Type the environment name again to confirm."
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+# A second run would race the first over the same workspace. This does not exclude a deploy of the
+# same environment, which keeps its own group -- so do not dispatch this while one is in flight.
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.environment }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: eu-central-1
+  TERRAFORM_VERSION: 1.14
+  NO_COLOR: 1
+
+jobs:
+  destroy:
+    name: Destroy ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    # Resolves this environment's variables, and applies whatever protection it carries.
+    environment: ${{ inputs.environment }}
+    permissions:
+      id-token: write # assume the CI/CD role via OIDC
+      contents: read
+
+    steps:
+      # A dropdown alone makes destroying production one mis-click. Typing the name is the point.
+      - name: Confirm the environment
+        env:
+          TARGET: ${{ inputs.environment }}
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          if [ "$CONFIRM" != "$TARGET" ]; then
+            echo "::error::confirmation '$CONFIRM' does not match '$TARGET' — nothing was destroyed"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v6
+
+      - name: Resolve the Terraform workspace
+        env:
+          TARGET: ${{ inputs.environment }}
+        run: |
+          # The GitHub environment and the workspace are two names for one environment, paired where
+          # the environments are declared. Reading the pairing beats restating it here.
+          workspace=$(jq -r --arg e "$TARGET" \
+            '.environments | to_entries[] | select(.value.gh_environment_name == $e) | .key' \
+            infra/config/config.json)
+          if [ -z "$workspace" ]; then
+            echo "::error::no environment is declared with the GitHub name '$TARGET'"
+            exit 1
+          fi
+          echo "WORKSPACE=$workspace" >> "$GITHUB_ENV"
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_CICD_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ~> ${{ env.TERRAFORM_VERSION }}
+
+      # First, because it reads the API foundation's state and cannot be planned once that state is
+      # empty. `workspace select` without `-or-create` fails rather than inventing an empty workspace
+      # and reporting that it destroyed nothing.
+      - name: Destroy the web foundation
+        working-directory: web-app/infra/foundation
+        env:
+          TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          TF_VAR_cloudflare_zone_id: ${{ vars.CLOUDFLARE_ZONE_ID }}
+        run: |
+          terraform init -input=false
+          terraform workspace select "$WORKSPACE"
+          terraform destroy -auto-approve -input=false
+
+      - name: Destroy the API foundation
+        working-directory: backend/infra/foundation
+        env:
+          TF_VAR_neon_api_key: ${{ secrets.NEON_API_KEY }}
+          TF_VAR_cognito_issuer_url: ${{ vars.COGNITO_ISSUER_URL }}
+          TF_VAR_cognito_spa_client_id: ${{ vars.COGNITO_SPA_CLIENT_ID }}
+          TF_VAR_cognito_cli_client_id: ${{ vars.COGNITO_CLI_CLIENT_ID }}
+          TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          TF_VAR_cloudflare_zone_id: ${{ vars.CLOUDFLARE_ZONE_ID }}
+        run: |
+          terraform init -input=false
+          terraform workspace select "$WORKSPACE"
+          terraform destroy -auto-approve -input=false
